@@ -177,7 +177,7 @@ class FlightPathing:
         srcId = self.airportToIdMap.get(srcAirport).airportId
         dstId = self.airportToIdMap.get(dstAirport).airportId
 
-        # get shortest path
+        # get the shortest path
         shortestPathId = "No such algorithm"
         if algorithm == "DIJKSTRA":
             shortestPathId = self._dijkstra(srcId, dstId)
@@ -205,8 +205,8 @@ def main():
     routes_location = os.path.join(script_directory, routes_path)
 
     flight_pathing = FlightPathing(airports_path, routes_path)
-    print("Dijkstra: ", flight_pathing.getShortestPath("Goroka Airport", "Wagga Wagga City Airport","dijkstra")) # 1, 3363
-    print("Astar: ", flight_pathing.getShortestPath("Goroka Airport", "Wagga Wagga City Airport","astar")) # 1, 3363
+    print("Dijkstra: ", flight_pathing.getShortestPath("Goroka Airport", "Wagga Wagga City Airport", "dijkstra"))  # 1, 3363
+    print("Astar: ", flight_pathing.getShortestPath("Goroka Airport", "Wagga Wagga City Airport", "astar"))  # 1, 3363
 
 
 main()
