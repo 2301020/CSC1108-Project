@@ -89,8 +89,22 @@ class FlightPathing:
         return len(self.idToAirportMap)
 
     def _dijkstra(self, srcId: int, dstId: int) -> list[int]:
+        def _traverseToSource(shortestPathTree: list[int]) -> list[int]:
+            dstId = shortestPathTree[-1]
+            shortestPath = []
+            for i in range(len(shortestPathTree) - 1, -1, -1):
+                routes = self.routeIdMap.get(shortestPathTree[i])
+                for route in routes:
+                    if shortestPathTree[i] != route.srcId and dstId != route.dstId:
+                        continue
+                    dstId = route.srcId
+                    shortestPath.append(route.srcId)
+            shortestPath.reverse()
+            return shortestPath
+
         weights = [sys.maxsize for i in range(self.getTotalAirports())]
         shortestPathTree = []
+        self._came_from = {}  # Dictionary to store predecessors
         pq = [(0.0, srcId)]
         while pq:
             currWeight, currId = heapq.heappop(pq)
@@ -99,31 +113,58 @@ class FlightPathing:
             weights[currId] = currWeight
             shortestPathTree.append(currId)
             if currId == dstId:
-                return self._traverseToSource(shortestPathTree)
+                return _traverseToSource(shortestPathTree)
             for nextRoute in self.routeIdMap.get(currId):
                 nextId = nextRoute.dstId
                 nextWeight = currWeight + self.getDist(currId, nextId)
                 heapq.heappush(pq, (nextWeight, nextId))
         return None
-    
-    def _traverseToSource(self, shortestPathTree: list[int]) -> list[int]:
-        dstId = shortestPathTree[-1]
-        shortestPath = []
-        for i in range(len(shortestPathTree) - 1, -1, -1):
-            routes = self.routeIdMap.get(shortestPathTree[i])
-            for route in routes:
-                if shortestPathTree[i] != route.srcId and dstId != route.dstId:
-                    continue
-                dstId = route.srcId
-                shortestPath.append(route.srcId)
-        shortestPath.reverse()
-        return shortestPath
+
     
     def _idPathToAirport(self, shortestPath: list[int]) -> list[str]:
         airports = []
         for id in shortestPath:
             airports.append(self.idToAirportMap.get(id).name)
         return airports
+
+    def _astar(self, srcId: int, dstId: int) -> list[int]:
+        # Define the heuristic function (distance between two airports)
+        def heuristic(id):
+            dst_airport = self.idToAirportMap.get(dstId)
+            dst_coord = (dst_airport.latitude, dst_airport.longitude)
+            airport = self.idToAirportMap.get(id)
+            coord = (airport.latitude, airport.longitude)
+            return geopy.distance.distance(coord, dst_coord).km
+
+        # Initialize the priority queue
+        pq = []
+        # Push the start node onto the queue
+        heapq.heappush(pq, (0, srcId))
+        # Initialize dictionaries to store cost and previous nodes
+        cost = {srcId: 0}
+        prev = {srcId: None}
+
+        # A* algorithm
+        while pq:
+            current_cost, current_id = heapq.heappop(pq)
+            if current_id == dstId:
+                break
+            for route in self.routeIdMap.get(current_id, []):
+                new_cost = cost[current_id] + 1  # You can modify this to include distance or other cost metrics
+                if route.dstId not in cost or new_cost < cost[route.dstId]:
+                    cost[route.dstId] = new_cost
+                    priority = new_cost + heuristic(route.dstId)  # A* heuristic function
+                    heapq.heappush(pq, (priority, route.dstId))
+                    prev[route.dstId] = current_id
+
+        # Reconstruct the shortest path
+        shortest_path = []
+        current_id = dstId
+        while current_id is not None:
+            shortest_path.append(current_id)
+            current_id = prev[current_id]
+
+        return shortest_path[::-1]  # Reverse the path to get the correct order
     
     def getShortestPath(self, srcAirport: str, dstAirport: str) -> list[str]:
         # get airport id
@@ -133,7 +174,8 @@ class FlightPathing:
         dstId = self.airportToIdMap.get(dstAirport).airportId
 
         # get shortest path
-        shortestPathId = self._dijkstra(srcId, dstId)
+        # shortestPathId = self._dijkstra(srcId, dstId)
+        shortestPathId = self._astar(srcId, dstId)
         shortestPathString = self._idPathToAirport(shortestPathId)
         return shortestPathString
     
@@ -141,6 +183,7 @@ class FlightPathing:
         if airportName is None:
             raise TypeError("Method existByAirportName(): Airport name cannot be None")
         return airportName in self.airportToIdMap
+
 
 def main():
     # Get the directory of the current script
