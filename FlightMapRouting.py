@@ -1,5 +1,6 @@
 import csv
 import heapq
+import os
 from queue import PriorityQueue
 import sys
 
@@ -142,9 +143,22 @@ class FlightPathing:
         return airportName in self.airportToIdMap
 
 def main():
-    airport_fileLocation = r"data\airports.dat"
-    routes_fileLocation = r"data\routes.dat"
-    flight_pathing = FlightPathing(airport_fileLocation, routes_fileLocation)
+    # Get the directory of the current script
+    script_directory = os.path.dirname(os.path.abspath(__file__))
+
+    # Define the relative path to the file within the Data folder
+    airports_path = os.path.join('data', 'airports.dat')
+    routes_path = os.path.join('data', 'routes.dat')
+
+    # Construct the full path
+    airports_location = os.path.join(script_directory, airports_path)
+    routes_location = os.path.join(script_directory, routes_path)
+
+    print("Relative path:", airports_path)
+    print("Relative path:", routes_path)
+    print("Full path:", airports_location)
+    print("Full path:", routes_location)
+    flight_pathing = FlightPathing(airports_path, routes_path)
     print(flight_pathing.getShortestPath("Goroka Airport", "Wagga Wagga City Airport")) # 1, 3363
 
 
