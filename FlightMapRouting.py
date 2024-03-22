@@ -166,7 +166,11 @@ class FlightPathing:
 
         return shortest_path[::-1]  # Reverse the path to get the correct order
     
-    def getShortestPath(self, srcAirport: str, dstAirport: str) -> list[str]:
+    def getShortestPath(self, srcAirport: str, dstAirport: str, algorithm: str) -> list[str]:
+        #Check for valid algorithm: dijkstra/astar
+        algorithm = algorithm.upper()
+        if not algorithm == "DIJKSTRA" and not algorithm == "ASTAR":
+            raise TypeError("No such algorithm supported.")
         # get airport id
         if not self.existsByAirportName(srcAirport) or not self.existsByAirportName(dstAirport):
             raise TypeError("Method getShortestPath(): srcAirport / dstAirport cannot be None")
@@ -174,8 +178,11 @@ class FlightPathing:
         dstId = self.airportToIdMap.get(dstAirport).airportId
 
         # get shortest path
-        # shortestPathId = self._dijkstra(srcId, dstId)
-        shortestPathId = self._astar(srcId, dstId)
+        shortestPathId = "No such algorithm"
+        if algorithm == "DIJKSTRA":
+            shortestPathId = self._dijkstra(srcId, dstId)
+        elif algorithm == "ASTAR":
+            shortestPathId = self._astar(srcId, dstId)
         shortestPathString = self._idPathToAirport(shortestPathId)
         return shortestPathString
     
@@ -197,12 +204,9 @@ def main():
     airports_location = os.path.join(script_directory, airports_path)
     routes_location = os.path.join(script_directory, routes_path)
 
-    print("Relative path:", airports_path)
-    print("Relative path:", routes_path)
-    print("Full path:", airports_location)
-    print("Full path:", routes_location)
     flight_pathing = FlightPathing(airports_path, routes_path)
-    print(flight_pathing.getShortestPath("Goroka Airport", "Wagga Wagga City Airport")) # 1, 3363
+    print("Dijkstra: ", flight_pathing.getShortestPath("Goroka Airport", "Wagga Wagga City Airport","dijkstra")) # 1, 3363
+    print("Astar: ", flight_pathing.getShortestPath("Goroka Airport", "Wagga Wagga City Airport","astar")) # 1, 3363
 
 
 main()
