@@ -52,10 +52,12 @@ class FlightPathing:
         self.totalAirports = 0
         self.airportToIdMap = {}
         self.idToAirportMap = {}  # id to airport
-        self.routeIdMap = defaultdict(dict)  # id to id
+        self.routeIdMap = defaultdict(dict)  # id to route
         self.parse_airports(airportsFile)
         self.parse_routes(routesFile)
         self.searchParameter = None
+        self.medianCost = self.getMedianCost()
+        self.medianDist = self.getMedianDist()
         
 
 
@@ -115,7 +117,7 @@ class FlightPathing:
 
 
     def getWeight(self, srcId: int, dstId: int, searchParameter: SearchParameter) :
-        weight = self.getDist(srcId, dstId) * searchParameter.dist + self.getCost(srcId, dstId) * searchParameter.cost
+        weight = (self.getDist(srcId, dstId) / self.medianDist ) * searchParameter.dist + (self.getCost(srcId, dstId) / self.medianCost) * searchParameter.cost
         return weight
 
     
@@ -198,12 +200,37 @@ class FlightPathing:
     def getTotalCost(self, srcAirport: str, dstAirport: str) -> float:
         shortestPath = self.getShortestPath(srcAirport, dstAirport)
 
+    def getMedianCost(self) -> float:
+        costs = []
+        route: Route
+        for routes in self.routeIdMap.values():
+            for route in routes.values():
+                costs.append(route.cost)
+        return self.getMedian(costs)
+    
+    def getMedianDist(self) -> float:
+        dists = []
+        route: Route
+        for routes in self.routeIdMap.values():
+            for route in routes.values():
+                dist = self.getDist(route.srcId, route.dstId)
+                dists.append(dist)
+        return self.getMedian(dists)
+        
+    def getMedian(self, arr: list) -> list:
+        arr.sort()
+        if len(arr) // 2 == 0: # 0 - 6, median is 3.
+            return arr[len(arr) // 2]
+        else:
+            return (arr[len(arr) // 2 + 1] + arr[len(arr) // 2]) / 2
+
 def main():
     airport_fileLocation = r"C:\Users\ambel\IdeaProjects\FlightPathing-main\venv\data\airports.dat"
     routes_fileLocation = r"C:\Users\ambel\IdeaProjects\FlightPathing-main\venv\data\routes.dat"
     flight_pathing = FlightPathing(airport_fileLocation, routes_fileLocation)
-    searchParameter = flight_pathing.createSearchParameter(0.4,0.6)
-    print(flight_pathing.getShortestPath("Narita International Airport", "Incheon International Airport", searchParameter)) # 1, 3363
+    searchParameter = flight_pathing.createSearchParameter(0.2,0.8)
+    # print(flight_pathing.getMedianDist())
+    print(flight_pathing.getShortestPath("Goroka Airport", "Wagga Wagga City Airport", searchParameter)) # 1, 3363
 
 
 main()
