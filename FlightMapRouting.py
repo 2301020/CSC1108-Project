@@ -7,6 +7,7 @@ from collections import defaultdict
 
 import geopy.distance
 
+AIRCRAFT_SPEED = 860
 
 class Airport:
 
@@ -37,14 +38,14 @@ class Route:
         self.srcId = srcId
         self.dstId = dstId
         self.cost = None
-        self.duration = None
+        self.time = None
         self.distance = None
 
 class SearchParameter:
 
-    def __init__(self, dist, cost):
-        self.dist = dist
+    def __init__(self, cost, time):
         self.cost = cost
+        self.time = time
 
 class FlightPathing:
 
@@ -57,7 +58,7 @@ class FlightPathing:
         self.parse_routes(routesFile)
         self.searchParameter = None
         self.medianCost = self.getMedianCost()
-        self.medianDist = self.getMedianDist()
+        self.medianTime = self.getMedianTime()
         
 
 
@@ -96,7 +97,10 @@ class FlightPathing:
             self.routeIdMap[int(route[3])][int(route[5])] = Route(int(route[3]), int(route[5]))
         for routes in self.routeIdMap.values():
             for route in routes.values():
+                route.dist = self.getDist(route.srcId, route.dstId)
                 route.cost = self.getCost(route.srcId, route.dstId)
+                route.time = self.getTime(route.srcId, route.dstId)
+                
 
 
     def getDist(self, srcId: int, dstId: int) -> float:
@@ -107,17 +111,26 @@ class FlightPathing:
         return geopy.distance.distance(src_coord, dst_coord).km
     
     def getCost(self, srcId, dstId):
+        route = self.routeIdMap.get(srcId).get(dstId)
         baseFare = round(random.uniform(100, 200), 2)
-        fuelCost = round(random.uniform(12.7 * 1.60934, 17.68 * 1.60934), 2) * self.getDist(srcId, dstId)
+        fuelCost = round(random.uniform(12.7 * 1.60934, 17.68 * 1.60934), 2) * route.dist
         return baseFare + fuelCost
     
 
     def createSearchParameter(self, dist: float, cost: float) -> SearchParameter:
         return SearchParameter(dist, cost)
 
+    def getTime(self, srcId, dstId):
+        route = self.routeIdMap.get(srcId).get(dstId)
+        waitingTime = round(random.uniform(0.5, 4), 2)
+        travellingTime = route.dist / AIRCRAFT_SPEED
+        return waitingTime + travellingTime
 
     def getWeight(self, srcId: int, dstId: int, searchParameter: SearchParameter) :
-        weight = (self.getDist(srcId, dstId) / self.medianDist ) * searchParameter.dist + (self.getCost(srcId, dstId) / self.medianCost) * searchParameter.cost
+        route = self.routeIdMap.get(srcId).get(dstId)
+        costWeightage = (route.cost / self.medianCost) * searchParameter.cost
+        timeWeightage = (route.time / self.medianTime) * searchParameter.time
+        weight = costWeightage + timeWeightage
         return weight
 
     
@@ -208,13 +221,12 @@ class FlightPathing:
                 costs.append(route.cost)
         return self.getMedian(costs)
     
-    def getMedianDist(self) -> float:
+    def getMedianTime(self) -> float:
         dists = []
         route: Route
         for routes in self.routeIdMap.values():
             for route in routes.values():
-                dist = self.getDist(route.srcId, route.dstId)
-                dists.append(dist)
+                dists.append(route.time)
         return self.getMedian(dists)
         
     def getMedian(self, arr: list) -> list:
@@ -228,7 +240,7 @@ def main():
     airport_fileLocation = r"C:\Users\ambel\IdeaProjects\FlightPathing-main\venv\data\airports.dat"
     routes_fileLocation = r"C:\Users\ambel\IdeaProjects\FlightPathing-main\venv\data\routes.dat"
     flight_pathing = FlightPathing(airport_fileLocation, routes_fileLocation)
-    searchParameter = flight_pathing.createSearchParameter(0.2,0.8)
+    searchParameter = flight_pathing.createSearchParameter(0.8,0.2)
     # print(flight_pathing.getMedianDist())
     print(flight_pathing.getShortestPath("Goroka Airport", "Wagga Wagga City Airport", searchParameter)) # 1, 3363
 
