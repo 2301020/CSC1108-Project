@@ -1,5 +1,6 @@
 import csv
 import heapq
+import os
 from queue import PriorityQueue
 import sys
 import random
@@ -140,8 +141,9 @@ class FlightPathing:
 
     def _idPathToAirport(self, shortestPath: list[int]) -> list[str]:
         airports = []
-        for id in shortestPath:
-            airports.append(self.idToAirportMap.get(id).name)
+        if shortestPath is not None: 
+            for id in shortestPath:
+                airports.append(self.idToAirportMap.get(id).name)
         return airports
     
     def _airportPathToId(self, shortestPath: list[str]) -> list[int]:
@@ -293,11 +295,12 @@ class Dijkstra:
             self.shortestPath = self._dijkstra(srcId, dstId, searchParameter)
 
         totalCost = 0
-        for i in range(1, len(self.shortestPath), 1):
-            currId = self.shortestPath[i - 1]
-            nextId = self.shortestPath[i]
-            route = self.routeIdMap.get(currId).get(nextId)
-            totalCost += route.cost
+        if self.shortestPath is not None: 
+            for i in range(1, len(self.shortestPath), 1):
+                currId = self.shortestPath[i - 1]
+                nextId = self.shortestPath[i]
+                route = self.routeIdMap.get(currId).get(nextId)
+                totalCost += route.cost
         return totalCost
     
     def getTotalTime(self, srcId: int, dstId: int, searchParameter: SearchParameter) -> float:
@@ -305,11 +308,12 @@ class Dijkstra:
             self.shortestPath = self._dijkstra(srcId, dstId, searchParameter)
 
         totalTime = 0
-        for i in range(1, len(self.shortestPath), 1):
-            currId = self.shortestPath[i - 1]
-            nextId = self.shortestPath[i]
-            route = self.routeIdMap.get(currId).get(nextId)
-            totalTime += route.time
+        if self.shortestPath is not None: 
+            for i in range(1, len(self.shortestPath), 1):
+                currId = self.shortestPath[i - 1]
+                nextId = self.shortestPath[i]
+                route = self.routeIdMap.get(currId).get(nextId)
+                totalTime += route.time
         return totalTime
 
 
@@ -317,14 +321,25 @@ class Dijkstra:
 
 
 def main():
-    airport_fileLocation = r"C:\Users\ambel\IdeaProjects\FlightPathing-main\venv\data\airports.dat"
-    routes_fileLocation = r"C:\Users\ambel\IdeaProjects\FlightPathing-main\venv\data\routes.dat"
-    flight_pathing = FlightPathing(airport_fileLocation, routes_fileLocation)
+
+    # Get the directory of the current script
+    script_directory = os.path.dirname(os.path.abspath(__file__))
+
+    # Define the relative path to the file within the Data folder
+    airports_path = os.path.join('data', 'airports.dat')
+    routes_path = os.path.join('data', 'routes.dat')
+
+    # Construct the full path
+    airports_location = os.path.join(script_directory, airports_path)
+    routes_location = os.path.join(script_directory, routes_path)
+
+    flight_pathing = FlightPathing(airports_path, routes_path)
+    
     searchParameter = flight_pathing.createSearchParameter(0.8,0.2)
     # print(flight_pathing.getMedianDist())
-    print(flight_pathing.getShortestPath("Goroka Airport", "Wagga Wagga City Airport", searchParameter)) # 1, 3363
-    totalTime = flight_pathing.getTotalTime("Goroka Airport", "Wagga Wagga City Airport", searchParameter)
-    totalCost = flight_pathing.getTotalCost("Goroka Airport", "Wagga Wagga City Airport", searchParameter)
+    print(flight_pathing.getShortestPath("Singapore Changi Airport", "Fukuoka Airport", searchParameter)) # 1, 3363
+    totalTime = flight_pathing.getTotalTime("Singapore Changi Airport", "Fukuoka Airport", searchParameter)
+    totalCost = flight_pathing.getTotalCost("Singapore Changi Airport", "Fukuoka Airport", searchParameter)
     print("Time: ", totalTime)
     print("Cost: ", totalCost)
 
