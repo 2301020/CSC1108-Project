@@ -72,7 +72,7 @@ class FlightPathing:
         self.medianCost = self.getMedianCost()
         self.medianTime = self.getMedianTime()
         self.dijkstra = Dijkstra(self.routeIdMap, self.medianCost, self.medianTime, self.getTotalAirports())
-        
+        self.astar = Astar(self.routeIdMap, self.medianCost, self.medianTime, self.getTotalAirports())
 
 
     def parse_airports(self, fileLocation: str):
@@ -162,7 +162,12 @@ class FlightPathing:
             airports.append(self.airportToIdMap.get(airport).airportId)
         return airports
     
-    def getShortestPath(self, srcAirport: str, dstAirport: str, searchParameter: SearchParameter) -> list[str]:
+    def getShortestPath(self, srcAirport: str, dstAirport: str, searchParameter: SearchParameter, algorithm: str) -> list[str]:
+        #Check for valid algorithm: dijkstra/astar
+        algorithm = algorithm.upper()
+        if not algorithm == "DIJKSTRA" and not algorithm == "ASTAR" and not algorithm == "BELLMANFORD":
+            raise TypeError("No such algorithm supported.")
+
         # get airport id
         if not self.existsByAirportName(srcAirport) or not self.existsByAirportName(dstAirport):
             raise TypeError("Method getShortestPath(): srcAirport / dstAirport cannot be None")
@@ -170,7 +175,13 @@ class FlightPathing:
         dstId = self.airportToIdMap.get(dstAirport).airportId
 
         # get shortest path
-        shortestPathId = self.dijkstra.getShortestPath(srcId, dstId, searchParameter)
+        shortestPathId = "No such algorithm"
+        if algorithm == "DIJKSTRA":
+            shortestPathId = self.dijkstra.getShortestPath(srcId, dstId, searchParameter)
+        elif algorithm == "ASTAR":
+            shortestPathId = self.astar._astar(srcId, dstId, searchParameter)
+        elif algorithm == "BELLMANFORD":
+            print("Nothing here yet!")
         shortestPathString = self._idPathToAirport(shortestPathId)
         return shortestPathString
     
@@ -337,8 +348,55 @@ class Dijkstra:
                 totalTime += route.time
         return totalTime
 
+class Astar:
+    def __init__(self, routeIdMap, medianCost, medianTime, totalAirports):
+        self.routeIdMap = routeIdMap
+        self.srcId = None
+        self.dstId = None
+        self.medianCost = medianCost
+        self.medianTime = medianTime
+        self.totalAirport = totalAirports
+        self.shortestPath = []
+        self.searchParameter = None
 
-    
+    def getWeight(self, srcId: int, dstId: int, searchParameter: SearchParameter) :
+        route = self.routeIdMap.get(srcId).get(dstId)
+        costWeightage = (route.cost / self.medianCost) * searchParameter.cost
+        timeWeightage = (route.time / self.medianTime) * searchParameter.time
+        weight = costWeightage + timeWeightage
+        return weight
+
+    def _astar(self, srcId: int, dstId: int, searchParameter: SearchParameter) -> list[int]:
+
+        # Initialize the priority queue
+        pq = []
+        # Push the start node onto the queue
+        heapq.heappush(pq, (0, srcId))
+        # Initialize dictionaries to store cost and previous nodes
+        cost = {srcId: 0}
+        prev = {srcId: None}
+
+        # A* algorithm
+        while pq:
+            current_cost, current_id = heapq.heappop(pq)
+            if current_id == dstId:
+                break
+            for route in self.routeIdMap.get(current_id, []).values():
+                new_cost = cost[current_id] + 1  # You can modify this to include distance or other cost metrics
+                if route.dstId not in cost or new_cost < cost[route.dstId]:
+                    cost[route.dstId] = new_cost
+                    priority = new_cost + self.getWeight(route.srcId, route.dstId, searchParameter)  # A* heuristic function
+                    heapq.heappush(pq, (priority, route.dstId))
+                    prev[route.dstId] = current_id
+
+        # Reconstruct the shortest path
+        shortest_path = []
+        current_id = dstId
+        while current_id is not None:
+            shortest_path.append(current_id)
+            current_id = prev[current_id]
+
+        return shortest_path[::-1]  # Reverse the path to get the correct order
 
 
 def main():
@@ -358,12 +416,14 @@ def main():
     
     searchParameter = flight_pathing.createSearchParameter(0.8,0.2)
     # print(flight_pathing.getMedianDist())
-    print(flight_pathing.getShortestPath("Singapore Changi Airport", "Fukuoka Airport", searchParameter)) # 1, 3363
+    print(flight_pathing.getShortestPath("Singapore Changi Airport", "Fukuoka Airport", searchParameter, "dijkstra")) # 1, 3363
     totalTime = flight_pathing.getTotalTime("Singapore Changi Airport", "Fukuoka Airport", searchParameter)
     totalCost = flight_pathing.getTotalCost("Singapore Changi Airport", "Fukuoka Airport", searchParameter)
     print("Time: ", totalTime)
     print("Cost: ", totalCost)
     #testing function to return objects
     print(flight_pathing.getShortestPathWithObjects("Singapore Changi Airport", "Fukuoka Airport", searchParameter))
+    #testing astar
+    print(flight_pathing.getShortestPath("Singapore Changi Airport", "Fukuoka Airport", searchParameter, "astar")) # 1, 3363
 
 main()
