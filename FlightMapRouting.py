@@ -139,11 +139,19 @@ class FlightPathing:
     def createSearchParameter(self, dist: float, cost: float) -> SearchParameter:
         return SearchParameter(dist, cost)
 
-    def _idPathToAirport(self, shortestPath: list[int]) -> list[str]:
+    def _idPathToAirport(self, shortestPath: list[int]) -> list[Airport]:
         airports = []
         if shortestPath is not None: 
             for id in shortestPath:
                 airports.append(self.idToAirportMap.get(id).name)
+        return airports
+    
+    # returns airport objects in a list
+    def _idPathtoAirportObjects(self, shortestPath: list[int]) -> list[Airport]:
+        airports = []
+        if shortestPath is not None: 
+            for id in shortestPath:
+                airports.append(self.idToAirportMap.get(id))
         return airports
     
     def _airportPathToId(self, shortestPath: list[str]) -> list[int]:
@@ -164,6 +172,19 @@ class FlightPathing:
         # get shortest path
         shortestPathId = self.dijkstra.getShortestPath(srcId, dstId, searchParameter)
         shortestPathString = self._idPathToAirport(shortestPathId)
+        return shortestPathString
+    
+    # returns airport objects in a list
+    def getShortestPathWithObjects(self, srcAirport: str, dstAirport: str, searchParameter: SearchParameter) -> list[Airport]:
+        # get airport id
+        if not self.existsByAirportName(srcAirport) or not self.existsByAirportName(dstAirport):
+            raise TypeError("Method getShortestPath(): srcAirport / dstAirport cannot be None")
+        srcId = self.airportToIdMap.get(srcAirport).airportId
+        dstId = self.airportToIdMap.get(dstAirport).airportId
+
+        # get shortest path
+        shortestPathId = self.dijkstra.getShortestPath(srcId, dstId, searchParameter)
+        shortestPathString = self._idPathtoAirportObjects(shortestPathId)
         return shortestPathString
     
     def existsByAirportName(self, airportName: str) -> bool:
@@ -342,5 +363,7 @@ def main():
     totalCost = flight_pathing.getTotalCost("Singapore Changi Airport", "Fukuoka Airport", searchParameter)
     print("Time: ", totalTime)
     print("Cost: ", totalCost)
+    #testing function to return objects
+    print(flight_pathing.getShortestPathWithObjects("Singapore Changi Airport", "Fukuoka Airport", searchParameter))
 
 main()
