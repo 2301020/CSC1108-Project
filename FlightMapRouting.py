@@ -72,7 +72,7 @@ class FlightPathing:
         self.medianCost = self.getMedianCost()
         self.medianTime = self.getMedianTime()
         self.dijkstra = Dijkstra(self.routeIdMap, self.medianCost, self.medianTime, self.getTotalAirports())
-        self.astar = Astar(self.routeIdMap, self.medianCost, self.medianTime, self.getTotalAirports())
+        self.astar = Astar(self.idToAirportMap, self.routeIdMap, self.medianCost, self.medianTime, self.getTotalAirports())
 
 
     def parse_airports(self, fileLocation: str):
@@ -349,7 +349,8 @@ class Dijkstra:
         return totalTime
 
 class Astar:
-    def __init__(self, routeIdMap, medianCost, medianTime, totalAirports):
+    def __init__(self, idToAirportMap, routeIdMap, medianCost, medianTime, totalAirports):
+        self.idToAirportMap = idToAirportMap
         self.routeIdMap = routeIdMap
         self.srcId = None
         self.dstId = None
@@ -363,6 +364,28 @@ class Astar:
         route = self.routeIdMap.get(srcId).get(dstId)
         costWeightage = (route.cost / self.medianCost) * searchParameter.cost
         timeWeightage = (route.time / self.medianTime) * searchParameter.time
+        weight = costWeightage + timeWeightage
+        return weight
+    
+    def getHeuristicWeight(self, srcId: int, dstId: int, searchParameter: SearchParameter) :
+        # route = self.routeIdMap.get(srcId).get(dstId)
+
+        src_airport = self.idToAirportMap.get(srcId)
+        dst_airport = self.idToAirportMap.get(dstId)
+        src_coord = (src_airport.latitude, src_airport.longitude)
+        dst_coord = (dst_airport.latitude, dst_airport.longitude)
+        dist = geopy.distance.distance(src_coord, dst_coord).km
+
+        waitingTime = round(random.uniform(0.5, 4), 2)
+        travellingTime = dist / AIRCRAFT_SPEED
+        cost = waitingTime + travellingTime
+
+        waitingTime = round(random.uniform(0.5, 4), 2)
+        travellingTime = dist / AIRCRAFT_SPEED
+        time = waitingTime + travellingTime
+
+        costWeightage = (cost / self.medianCost) * searchParameter.cost
+        timeWeightage = (time/ self.medianTime) * searchParameter.time
         weight = costWeightage + timeWeightage
         return weight
 
@@ -381,11 +404,11 @@ class Astar:
             current_cost, current_id = heapq.heappop(pq)
             if current_id == dstId:
                 break
-            for route in self.routeIdMap.get(current_id, []).values():
+            for route in self.routeIdMap.get(current_id, {}).values():
                 new_cost = cost[current_id] + 1  # You can modify this to include distance or other cost metrics
                 if route.dstId not in cost or new_cost < cost[route.dstId]:
                     cost[route.dstId] = new_cost
-                    priority = new_cost + self.getWeight(route.srcId, route.dstId, searchParameter)  # A* heuristic function
+                    priority = new_cost + self.getHeuristicWeight(route.srcId, route.dstId, searchParameter)  # A* heuristic function
                     heapq.heappush(pq, (priority, route.dstId))
                     prev[route.dstId] = current_id
 
@@ -416,7 +439,7 @@ def main():
     
     searchParameter = flight_pathing.createSearchParameter(0.8,0.2)
     # print(flight_pathing.getMedianDist())
-    print(flight_pathing.getShortestPath("Singapore Changi Airport", "Fukuoka Airport", searchParameter, "dijkstra")) # 1, 3363
+    print(flight_pathing.getShortestPath("Tartu Airport", "Cape Town International Airport", searchParameter, "dijkstra")) # 1, 3363
     totalTime = flight_pathing.getTotalTime("Singapore Changi Airport", "Fukuoka Airport", searchParameter)
     totalCost = flight_pathing.getTotalCost("Singapore Changi Airport", "Fukuoka Airport", searchParameter)
     print("Time: ", totalTime)
@@ -424,6 +447,6 @@ def main():
     #testing function to return objects
     print(flight_pathing.getShortestPathWithObjects("Singapore Changi Airport", "Fukuoka Airport", searchParameter))
     #testing astar
-    print(flight_pathing.getShortestPath("Singapore Changi Airport", "Fukuoka Airport", searchParameter, "astar")) # 1, 3363
+    print(flight_pathing.getShortestPath("Tartu Airport", "Cape Town International Airport", searchParameter, "astar")) # 1, 3363
 
 main()
