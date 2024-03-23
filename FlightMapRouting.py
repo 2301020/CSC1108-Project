@@ -115,51 +115,56 @@ class FlightPathing:
 
 
     def getWeight(self, srcId: int, dstId: int, searchParameter: SearchParameter) :
-        weight = getDist(srcId, dstId) * searchParameter.dist + getCost(srcId, dstId) * searchParameter.cost
+        weight = self.getDist(srcId, dstId) * searchParameter.dist + self.getCost(srcId, dstId) * searchParameter.cost
         return weight
 
     
     def getTotalAirports(self):
         return self.totalAirports
 
-    def _dijkstra(self, srcId: int, dstId: int) -> list[int]:
+    class Vertex:
+        def __init__(self, currId, prevId , weight):
+            self.currId = currId
+            self.prevId = prevId
+            self.weight = weight
+            
+        
+        def __eq__(self, other):
+            return self.currId == other.currId
+        
+        def __lt__(self, other):
+            return self.weight < other.weight
+
+    def _dijkstra(self, srcId: int, dstId: int, searchParameter: SearchParameter) -> list[int]:
         weights = [sys.maxsize for i in range(self.getTotalAirports())]
-        shortestPathTree = []
-        pq = [(0.0, srcId)]
+        edgeTo = {}
+        pq = [self.Vertex(srcId, -1 ,0.0)]
         while pq:
-            currWeight, currId = heapq.heappop(pq)
+            currVertex = heapq.heappop(pq)
+            currId, currWeight = currVertex.currId, currVertex.weight
             if currWeight >= weights[currId]:
                 continue
             weights[currId] = currWeight
-            shortestPathTree.append(currId)
+            edgeTo[currId] = currVertex.prevId
             if currId == dstId:
-                return self._traverseToSource(shortestPathTree)
+                return self._traverseToSrc(edgeTo, dstId)
             for nextRoute in self.routeIdMap.get(currId, {}).values():
                 nextId = nextRoute.dstId
-                print(nextId)
-                nextWeight = currWeight + self.getDist(currId, nextId)
-                heapq.heappush(pq, (nextWeight, nextId))
+                nextWeight = currWeight + self.getWeight(currId, nextId, searchParameter)
+                heapq.heappush(pq, self.Vertex(nextId, currId, nextWeight))
         return None
     
-    def _traverseToSource(self, shortestPathTree: list[int]) -> list[int]:
-        if len(shortestPathTree) < 2:
-            return []
-        dstId = shortestPathTree[-1]
-        shortestPath = []
-        for i in range(len(shortestPathTree) - 1, -1, -1):
-            routes = self.routeIdMap.get(shortestPathTree[i])
-            # if shortestPathTree[i] in routes
-            for route in routes:
-                if shortestPathTree[i] != route.srcId and dstId != route.dstId:
-                    continue
-                dstId = route.srcId
-                shortestPath.append(route.srcId)
-        shortestPath.reverse()
-        return shortestPath
+    def _traverseToSrc(self, spTree: dict, dstId: int) -> list[int]:
+        res = []
+        currId = dstId
+        while currId != -1:
+            res.append(currId)
+            currId = spTree.get(currId)
+        res.reverse()
+        return res
+
     
     def _idPathToAirport(self, shortestPath: list[int]) -> list[str]:
-        if shortestPath == None:
-            return None
         airports = []
         for id in shortestPath:
             airports.append(self.idToAirportMap.get(id).name)
@@ -173,7 +178,7 @@ class FlightPathing:
             airports.append(self.airportToIdMap.get(airport).airportId)
         return airports
     
-    def getShortestPath(self, srcAirport: str, dstAirport: str) -> list[str]:
+    def getShortestPath(self, srcAirport: str, dstAirport: str, searchParameter: SearchParameter) -> list[str]:
         # get airport id
         if not self.existsByAirportName(srcAirport) or not self.existsByAirportName(dstAirport):
             raise TypeError("Method getShortestPath(): srcAirport / dstAirport cannot be None")
@@ -181,7 +186,7 @@ class FlightPathing:
         dstId = self.airportToIdMap.get(dstAirport).airportId
 
         # get shortest path
-        shortestPathId = self._dijkstra(srcId, dstId)
+        shortestPathId = self._dijkstra(srcId, dstId, searchParameter)
         shortestPathString = self._idPathToAirport(shortestPathId)
         return shortestPathString
     
@@ -193,14 +198,12 @@ class FlightPathing:
     def getTotalCost(self, srcAirport: str, dstAirport: str) -> float:
         shortestPath = self.getShortestPath(srcAirport, dstAirport)
 
-
-
 def main():
     airport_fileLocation = r"C:\Users\ambel\IdeaProjects\FlightPathing-main\venv\data\airports.dat"
     routes_fileLocation = r"C:\Users\ambel\IdeaProjects\FlightPathing-main\venv\data\routes.dat"
     flight_pathing = FlightPathing(airport_fileLocation, routes_fileLocation)
     searchParameter = flight_pathing.createSearchParameter(0.4,0.6)
-    print(flight_pathing.getShortestPath("Goroka Airport", "Wagga Wagga City Airport")) # 1, 3363
+    print(flight_pathing.getShortestPath("Narita International Airport", "Incheon International Airport", searchParameter)) # 1, 3363
 
 
 main()
