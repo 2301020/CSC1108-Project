@@ -69,8 +69,9 @@ class FlightPathing:
         self.parse_airports(airportsFile)
         self.parse_routes(routesFile)
         self.searchParameter = None
-        self.medianCost = self.getMedianCost()
-        self.medianTime = self.getMedianTime()
+        self.median = Median(self.routeIdMap)
+        self.medianCost = self.median.getMedianCost()
+        self.medianTime = self.median.getMedianTime()
         self.dijkstra = Dijkstra(self.routeIdMap, self.medianCost, self.medianTime, self.getTotalAirports())
         self.astar = Astar(self.idToAirportMap, self.routeIdMap, self.medianCost, self.medianTime, self.getTotalAirports())
 
@@ -99,8 +100,15 @@ class FlightPathing:
         file.close()
 
         for route in routes:
-            if route[3] == "\\N" or route[5] == "\\N" or self.idToAirportMap.get(int(route[3])) is None or self.idToAirportMap.get(int(route[5])) is None:
+            if route[3] == "\\N":
                 continue
+            if route[5] == "\\N":
+                continue
+            if self.idToAirportMap.get(int(route[3])) is None:
+                continue
+            if self.idToAirportMap.get(int(route[5])) is None:
+                continue
+
             self.routeIdMap[int(route[3])][int(route[5])] = Route(int(route[3]), int(route[5]))
         for routes in self.routeIdMap.values():
             for route in routes.values():
@@ -168,7 +176,7 @@ class FlightPathing:
         srcId = self.airportToIdMap.get(srcAirport).airportId
         dstId = self.airportToIdMap.get(dstAirport).airportId
 
-        # get shortest path
+        # get the shortest path
         shortestPathId = "No such algorithm"
         if algorithm == "DIJKSTRA":
             shortestPathId = self.dijkstra.getShortestPath(srcId, dstId, searchParameter)
@@ -187,7 +195,7 @@ class FlightPathing:
         srcId = self.airportToIdMap.get(srcAirport).airportId
         dstId = self.airportToIdMap.get(dstAirport).airportId
 
-        # get shortest path
+        # get the shortest path
         shortestPathId = self.dijkstra.getShortestPath(srcId, dstId, searchParameter)
         shortestPathString = self._idPathtoAirportObjects(shortestPathId)
         return shortestPathString
@@ -201,41 +209,6 @@ class FlightPathing:
         if airportName is None:
             raise TypeError("Method existByAirportId(): Airport name cannot be None")
         return airportName in self.idToAirportMap
-
-    def getMedianCost(self) -> float:
-        costs = []
-        route: Route
-        for routes in self.routeIdMap.values():
-            for route in routes.values():
-                costs.append(route.cost)
-        median1, median2 = self.getMedian(costs)
-        return (costs[median1] + costs[median2]) / 2
-
-    def getMedianTime(self) -> float:
-        dists = []
-        route: Route
-        for routes in self.routeIdMap.values():
-            for route in routes.values():
-                dists.append(route.time)
-        median1, median2 = self.getMedian(dists)
-        return (dists[median1] + dists[median2]) / 2
-
-    def getMedian(self, arr: list) -> tuple[int, int]:
-        arr.sort()
-        # if Array is even length, return the average of the two middle elements
-        if len(arr) % 2 == 0:  # 0 - 5, median is 2.
-            return len(arr) // 2, len(arr) // 2 + 1
-        # if Array is odd length, return the middle element
-        else:
-            return len(arr) // 2, len(arr) // 2
-
-    # Ambrose original code for median. Delete at the end of project if not using
-    # def getMedian(self, arr: list) -> list:
-#     arr.sort()
-#     if len(arr) // 2 == 0:  # 0 - 6, median is 3.
-#         return arr[len(arr) // 2]
-#     else:
-#         return (arr[len(arr) // 2 + 1] + arr[len(arr) // 2]) / 2
 
     def getTotalCost(self, srcAirport: int, dstAirport: int, searchParameter: SearchParameter) -> float:
         # get airport id
@@ -259,6 +232,35 @@ class FlightPathing:
         return self.dijkstra.getTotalTime(srcId, dstId, searchParameter)
 
 
+class Median:
+    def __init__(self, routeIdMap):
+        self.costs = []
+        self.time = []
+        self.routeIdMap = routeIdMap
+        self.calculateMedians()
+
+    def calculateMedians(self):
+        for routes in self.routeIdMap.values():
+            for route in routes.values():
+                self.costs.append(route.cost)
+                self.time.append(route.time)
+
+    def getMedianCost(self) -> float:
+        median1, median2 = self.getMedianIndices(self.costs)
+        return (self.costs[median1] + self.costs[median2]) / 2
+
+    def getMedianTime(self) -> float:
+        median1, median2 = self.getMedianIndices(self.time)
+        return (self.time[median1] + self.time[median2]) / 2
+
+    def getMedianIndices(self, arr: list) -> tuple[int, int]:
+        arr.sort()
+        # if Array is even length, return the average of the two middle elements
+        if len(arr) % 2 == 0:  # 0 - 5, median is 2.
+            return len(arr) // 2, len(arr) // 2 + 1
+        # if Array is odd length, return the middle element
+        else:
+            return len(arr) // 2, len(arr) // 2
 
 class Dijkstra:
 
@@ -325,7 +327,7 @@ class Dijkstra:
         if srcId != self.srcId or dstId != self.dstId or searchParameter != self.searchParameter:
             self.shortestPath = self._dijkstra(srcId, dstId, searchParameter)
 
-        # get shortest path
+        # get the shortest path
         return self.shortestPath
 
     def getWeight(self, srcId: int, dstId: int, searchParameter: SearchParameter) :
@@ -457,9 +459,9 @@ def main():
     totalCost = flight_pathing.getTotalCost("Singapore Changi Airport", "Fukuoka Airport", searchParameter)
     print("Time: ", totalTime)
     print("Cost: ", totalCost)
-    #testing function to return objects
+    # testing function to return objects
     print(flight_pathing.getShortestPathWithObjects("Singapore Changi Airport", "Fukuoka Airport", searchParameter))
-    #testing astar
+    # testing astar
     print(flight_pathing.getShortestPath("Tartu Airport", "Cape Town International Airport", searchParameter, "astar")) # 1, 3363
     print(flight_pathing.getShortestPath("Narita International Airport", "Incheon International Airport", searchParameter, "astar")) # 1, 3363
 
