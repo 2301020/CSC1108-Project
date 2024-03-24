@@ -2,3 +2,4 @@ geopy==2.4.1
 pandas==2.2.1
 tkintermapview==1.29
 CTkMessagebox==2.5
+ttkwidgets==0.13.0

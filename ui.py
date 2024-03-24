@@ -2,6 +2,7 @@ import customtkinter
 from CTkMessagebox import CTkMessagebox
 from tkintermapview import TkinterMapView
 import FlightMapRouting
+from ttkwidgets.autocomplete import AutocompleteCombobox
 # https://github.com/TomSchimansky/TkinterMapView?tab=readme-ov-file#create-path-from-position-list
 
 customtkinter.set_default_color_theme("blue")
@@ -34,8 +35,8 @@ class App(customtkinter.CTk):
         self.bind("<Command-q>", self.on_closing)
         self.bind("<Command-w>", self.on_closing)
         self.createcommand('tk::mac::Quit', self.on_closing)
-
         
+        self.flight_pathing = FlightMapRouting.FlightPathing(self._AIRPORT_FILELOCATION, self._ROUTES_FILELOCATION)        
         
         self.grid_columnconfigure(0, weight=1)
         self.grid_columnconfigure(1, weight=1)
@@ -68,17 +69,24 @@ class App(customtkinter.CTk):
         self.map_widget.set_zoom(3)
         self.map_widget.set_tile_server("https://mt0.google.com/vt/lyrs=m&hl=en&x={x}&y={y}&z={z}&s=Ga", max_zoom=22)
 
-        self.source_Label = customtkinter.CTkLabel(self.frame_right, text="Source Country/Airport")
-        self.source_Label.grid(column=0, row=1, sticky="EW", padx=5, pady=5)
+        self.source_label = customtkinter.CTkLabel(self.frame_right, text="Source Country/Airport")
+        self.source_label.grid(column=0, row=1, sticky="EW", padx=5, pady=5)
 
-        self.source_entry = customtkinter.CTkEntry(self.frame_right)
-        self.source_entry.grid(column=0, row=2, sticky="EW", padx=5, pady=5)
-
+       # self.source_entry = customtkinter.CTkEntry(self.frame_right)
+       # self.source_entry.grid(column=0, row=2, sticky="EW", padx=5, pady=5)
+        self.getAirports()
+        self.source_name = customtkinter.StringVar()
+        self.source_combobox = AutocompleteCombobox(self.frame_right, completevalues=self.airport_list, width=20, height=5, textvariable=self.source_name)
+        self.source_combobox.grid(column=0, row=2, sticky="EW", padx=5, pady=5)
+        
         self.destination_Label = customtkinter.CTkLabel(self.frame_right, text="Destination Country/Airport")
         self.destination_Label.grid(column=0, row=3, sticky="EW", padx=5, pady=5)
 
-        self.destination_entry = customtkinter.CTkEntry(self.frame_right)
-        self.destination_entry.grid(column=0, row=4, sticky="EW", padx=5, pady=5)
+       # self.destination_entry = customtkinter.CTkEntry(self.frame_right)
+       # self.destination_entry.grid(column=0, row=4, sticky="EW", padx=5, pady=5)
+        self.destination_name = customtkinter.StringVar()
+        self.destination_combobox = AutocompleteCombobox(self.frame_right, completevalues=self.airport_list, width=20, height=5, textvariable=self.destination_name)
+        self.destination_combobox.grid(column=0, row=4, sticky="EW", padx=5, pady=5)
 
         self.round_trip_switch_state = customtkinter.StringVar(value="Single trip")
         self.round_trip_switch = customtkinter.CTkSwitch(self.frame_right, textvariable=self.round_trip_switch_state, command=self.roundTripToggle, 
@@ -105,10 +113,10 @@ class App(customtkinter.CTk):
         source = self.Location("Singapore", 1.3558572118659549, 103.98638538648154)
         destination = self.Location("Kuala Lumpur", 3.1578589977287805, 101.70339753766487)
         
-        self.flight_pathing = FlightMapRouting.FlightPathing(self._AIRPORT_FILELOCATION, self._ROUTES_FILELOCATION)
         self.displayFlightResults(source, destination)
     
-    # temp class        
+    def getAirports(self):
+        self.airport_list = sorted([airport.name for airport in self.flight_pathing.idToAirportMap.values()])    # temp class        
     class Location:
         def __init__(self, name, latitude, longitude):
             self.name = name
@@ -119,8 +127,11 @@ class App(customtkinter.CTk):
         self.round_trip_switch_state.set("Round trip" if self.round_trip_switch_state.get() == "Single trip" else "Single trip")
         
     def search(self):
-        source = self.source_entry.get()
-        destination = self.destination_entry.get()
+        source = self.source_name.get()
+        destination = self.destination_name.get()
+        
+        self.getAirports()
+        print(source, destination)
         
         if not source or not destination:
             CTkMessagebox(title="Error", message="Please enter a source and destination")
@@ -131,7 +142,7 @@ class App(customtkinter.CTk):
         elif source == destination:
             CTkMessagebox(title="Error", message="Source and destination cannot be the same")
             return
-        elif source not in self.flight_pathing.airportToIdMap or destination not in self.flight_pathing.airportToIdMap:
+        elif source not in self.airport_list or destination not in self.airport_list:
             CTkMessagebox(title="Error", message="Invalid source or destination")
             return
         # shortest_path = self.flight_pathing.getShortestPath(self.source, self.destination)
@@ -140,8 +151,7 @@ class App(customtkinter.CTk):
         sourceLocation = self.map_widget.set_address(source, marker=True)
         destinationLocation = self.map_widget.set_address(destination, marker=True)
         self.map_widget.set_path([sourceLocation.position, destinationLocation.position], width=3, color="blue")
-        self.map_widget.set_location(sourceLocation.position, zoom=5)
-
+        self.map_widget.set_position(sourceLocation.position, zoom=5)
 
     def plotPath(self, path):
         next_path = None
