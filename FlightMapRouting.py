@@ -443,9 +443,9 @@ def readAirportAndRoutes():
     # Get the directory of the current script
     script_directory = os.path.dirname(os.path.abspath(__file__))
 
-    # Define the relative path to the file within the Data folder
-    airports_path = os.path.join('data', 'airports.dat')
-    routes_path = os.path.join('data', 'routes.dat')
+#     # Define the relative path to the file within the Data folder
+#     airports_path = os.path.join('data', 'airports.dat')
+#     routes_path = os.path.join('data', 'routes.dat')
 
     return FlightPathing(airports_path, routes_path)
 
