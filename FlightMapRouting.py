@@ -11,6 +11,7 @@ import geopy.distance
 AIRCRAFT_SPEED = 860
 PASSENGER_SIZE_747 = 440
 random.seed(50)
+KM_TO_MILE = 0.621371
 
 
 class Airport:
@@ -133,7 +134,7 @@ class FlightPathing:
     def _setCost(self, srcId, dstId):
         route = self.routeIdMap[srcId][dstId]
         baseFare = round(random.uniform(100, 200), 2)
-        fuelCost = round(random.uniform(12.7, 17.68), 2) / PASSENGER_SIZE_747 * route.dist * 0.621371
+        fuelCost = round(random.uniform(12.7, 17.68), 2) / PASSENGER_SIZE_747 * route.dist * KM_TO_MILE
         return baseFare + fuelCost
 
     def getTotalAirports(self):
@@ -394,7 +395,7 @@ class Astar:
         dist = geopy.distance.distance(src_coord, dst_coord).km
 
         baseFare = round(random.uniform(100, 200), 2)
-        fuelCost = round(random.uniform(12.7, 17.68), 2) / PASSENGER_SIZE_747 * dist * 0.621371
+        fuelCost = round(random.uniform(12.7, 17.68), 2) / PASSENGER_SIZE_747 * dist * KM_TO_MILE
         cost = baseFare + fuelCost
 
         waitingTime = random.uniform(0.5, 4)
@@ -404,15 +405,6 @@ class Astar:
         costWeightage = (cost / self.medianCost) * searchParameter.cost
         timeWeightage = (time / self.medianTime) * searchParameter.time
         return costWeightage + timeWeightage
-
-    # def heuristic_cost_estimate(self, srcId: int, dstId: int, searchParameter: SearchParameter):
-    #     route = self.routeIdMap.get(srcId).get(dstId)
-    #     if route is None:
-    #         return float('inf')  # Return infinity if there's no direct route
-    #
-    #     costWeightage = (route.cost / self.medianCost) * searchParameter.cost
-    #     timeWeightage = (route.time / self.medianTime) * searchParameter.time
-    #     return costWeightage + timeWeightage
 
     def getShortestPath(self, srcId: int, dstId: int, searchParameter: SearchParameter) -> list[int]:
         open_list = PriorityQueue()
