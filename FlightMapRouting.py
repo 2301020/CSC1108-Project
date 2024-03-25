@@ -10,6 +10,7 @@ import geopy.distance
 
 AIRCRAFT_SPEED = 860
 PASSENGER_SIZE_747 = 440
+random.seed(50)
 
 
 class Airport:
@@ -130,7 +131,7 @@ class FlightPathing:
         return waitingTime + travellingTime
 
     def _setCost(self, srcId, dstId):
-        route = self.routeIdMap.get(srcId).get(dstId)
+        route = self.routeIdMap[srcId][dstId]
         baseFare = round(random.uniform(100, 200), 2)
         fuelCost = round(random.uniform(12.7, 17.68), 2) / PASSENGER_SIZE_747 * route.dist * 0.621371
         return baseFare + fuelCost
@@ -276,6 +277,7 @@ class Dijkstra:
         self.totalAirport = totalAirports
         self.shortestPath = []
         self.searchParameter = None
+        self.totalWeight = 0
 
     class Vertex:
         def __init__(self, currId, prevId, weight):
@@ -290,6 +292,7 @@ class Dijkstra:
             return self.weight < other.weight
 
     def _dijkstra(self, srcId: int, dstId: int, searchParameter: SearchParameter) -> list[int]:
+        self.totalWeight = 0
         self._setSearchParameters(srcId, dstId, searchParameter)
         weights = [sys.maxsize for i in range(self.totalAirport)]
         edgeTo = {}
@@ -302,6 +305,7 @@ class Dijkstra:
             weights[currId] = currWeight
             edgeTo[currId] = currVertex.prevId
             if currId == dstId:
+                self.totalWeight = currWeight  # Update total weight
                 return self._traverseToSrc(edgeTo, dstId)
             nextRoute: Route
             for nextRoute in self.routeIdMap.get(currId, {}).values():
@@ -373,6 +377,7 @@ class Astar:
         self.totalAirport = totalAirports
         self.shortestPath = []
         self.searchParameter = None
+        self.totalWeight = 0
 
     def getWeight(self, srcId: int, dstId: int, searchParameter: SearchParameter):
         route = self.routeIdMap.get(srcId).get(dstId)
@@ -381,63 +386,67 @@ class Astar:
         weight = costWeightage + timeWeightage
         return weight
 
-    def getHeuristicWeight(self, srcId: int, dstId: int, searchParameter: SearchParameter):
-        # route = self.routeIdMap.get(srcId).get(dstId)
-
+    def heuristic_cost_estimate(self, srcId: int, dstId: int, searchParameter: SearchParameter):
         src_airport = self.idToAirportMap.get(srcId)
         dst_airport = self.idToAirportMap.get(dstId)
         src_coord = (src_airport.latitude, src_airport.longitude)
         dst_coord = (dst_airport.latitude, dst_airport.longitude)
         dist = geopy.distance.distance(src_coord, dst_coord).km
 
-        waitingTime = round(random.uniform(0.5, 4), 2)
-        travellingTime = dist / AIRCRAFT_SPEED
-        cost = waitingTime + travellingTime
+        baseFare = round(random.uniform(100, 200), 2)
+        fuelCost = round(random.uniform(12.7, 17.68), 2) / PASSENGER_SIZE_747 * dist * 0.621371
+        cost = baseFare + fuelCost
 
-        waitingTime = round(random.uniform(0.5, 4), 2)
+        waitingTime = random.uniform(0.5, 4)
         travellingTime = dist / AIRCRAFT_SPEED
         time = waitingTime + travellingTime
 
         costWeightage = (cost / self.medianCost) * searchParameter.cost
         timeWeightage = (time / self.medianTime) * searchParameter.time
-        weight = costWeightage + timeWeightage
-        return weight
+        return costWeightage + timeWeightage
+
+    # def heuristic_cost_estimate(self, srcId: int, dstId: int, searchParameter: SearchParameter):
+    #     route = self.routeIdMap.get(srcId).get(dstId)
+    #     if route is None:
+    #         return float('inf')  # Return infinity if there's no direct route
+    #
+    #     costWeightage = (route.cost / self.medianCost) * searchParameter.cost
+    #     timeWeightage = (route.time / self.medianTime) * searchParameter.time
+    #     return costWeightage + timeWeightage
 
     def getShortestPath(self, srcId: int, dstId: int, searchParameter: SearchParameter) -> list[int]:
+        open_list = PriorityQueue()
+        open_list.put((0, srcId))
+        came_from = {}
+        g_score = {srcId: 0}
+        self.totalWeight = 0
 
-        # Initialize the priority queue
-        pq = []
-        # Push the start node onto the queue
-        heapq.heappush(pq, (0, srcId))
-        # Initialize dictionaries to store cost and previous nodes
-        cost = {srcId: 0}  # Cost to reach each node
-        prev = {srcId: None}  # Previous node in optimal path
+        while not open_list.empty():
+            current_cost, current = open_list.get()
 
-        # A* algorithm
-        while pq:
-            current_cost, current_id = heapq.heappop(pq)
-            if current_id == dstId:
-                break
-            for route in self.routeIdMap.get(current_id, {}).values():
-                new_cost = cost[current_id] + 1  # Modify this to include distance or other cost metrics
-                if route.dstId not in cost or new_cost < cost[route.dstId]:
-                    cost[route.dstId] = new_cost
-                    priority = new_cost + self.getHeuristicWeight(route.srcId, route.dstId,
-                                                                  searchParameter)  # A* heuristic function
-                    heapq.heappush(pq, (priority, route.dstId))
-                    prev[route.dstId] = current_id
+            if current == dstId:
+                path = [current]
+                while current in came_from:
+                    current = came_from[current]
+                    path.append(current)
+                path.reverse()
 
-        # Reconstruct the shortest path
-        shortest_path = []
-        current_id = dstId
-        while current_id is not None:
-            shortest_path.append(current_id)
-            current_id = prev.get(current_id)
+                # Calculate total weight of the journey
+                total_weight = 0
+                for i in range(len(path) - 1):
+                    total_weight += self.getWeight(path[i], path[i+1], searchParameter)
+                self.totalWeight = total_weight
 
-        if shortest_path[-1] != dstId and shortest_path[0] != srcId:
-            return []  # No path found
-        else:
-            return shortest_path[::-1]  # Reverse the path to get the correct order
+                return path
+
+            for neighbor in self.routeIdMap.get(current, {}):
+                tentative_g_score = g_score[current] + self.getWeight(current, neighbor, searchParameter)
+                if neighbor not in g_score or tentative_g_score < g_score[neighbor]:
+                    came_from[neighbor] = current
+                    g_score[neighbor] = tentative_g_score
+                    priority = tentative_g_score + self.heuristic_cost_estimate(neighbor, dstId, searchParameter)
+                    open_list.put((priority, neighbor))
+        return []
 
 def readAirportAndRoutes():
     # Get the directory of the current script
@@ -456,41 +465,26 @@ def main():
     flight_pathing = readAirportAndRoutes()
     searchParameter = flight_pathing.createSearchParameter(0.8, 0.2)
 
-    print(flight_pathing.getShortestPath("Tartu Airport", "Cape Town International Airport", searchParameter, "dijkstra"))
-    print(flight_pathing.getShortestPath("Tekapo Aerodrome", "Hassan I Airport", searchParameter, "astar"))
-    print(flight_pathing.getShortestPath("Ranong Airport", "Futuna Airport", searchParameter, "astar"))
-
-    for i in range(10):
+    for i in range(50):
         airportList = list(flight_pathing.idToAirportMap.values())
         airport1 = random.choice(airportList)
         airport2 = random.choice(airportList)
 
-        print("from: {0} To: {1}".format(airport1.name, airport2.name))
+        dijkstraPath = flight_pathing.getShortestPath(airport1.name, airport2.name, searchParameter, "dijkstra")
+        astarPath = flight_pathing.getShortestPath(airport1.name, airport2.name, searchParameter, "astar")
+        dijkstraWeight = flight_pathing.dijkstra.totalWeight
+        astarWeight = flight_pathing.astar.totalWeight
 
-        print(flight_pathing.getShortestPath(airport1.name, airport2.name, searchParameter, "dijkstra"))
-        print(flight_pathing.getShortestPath(airport1.name, airport2.name, searchParameter, "astar"))
+        if dijkstraWeight == 0:# or dijkstraWeight == astarWeight:
+            continue
 
-    # Test from Tartu to cape town
-    print(flight_pathing.getShortestPath("Tartu Airport", "Cape Town International Airport", searchParameter, "dijkstra"))
-    print(flight_pathing.getShortestPath("Tartu Airport", "Cape Town International Airport", searchParameter, "astar"))
+        print("\nfrom: {0} To: {1}".format(airport1.name, airport2.name))
 
+        print("Dijkstra: ", dijkstraPath)
+        print("Astar:    ", astarPath)
 
-
-    # # print(flight_pathing.getMedianDist())
-    # print(flight_pathing.getShortestPath("Tartu Airport", "Cape Town International Airport", searchParameter,
-    #                                      "dijkstra"))  # 1, 3363
-    # totalTime = flight_pathing.getTotalTime("Singapore Changi Airport", "Fukuoka Airport", searchParameter)
-    # totalCost = flight_pathing.getTotalCost("Singapore Changi Airport", "Fukuoka Airport", searchParameter)
-    # print("Time: ", totalTime)
-    # print("Cost: ", totalCost)
-    # # testing function to return objects
-    # print(flight_pathing.getShortestPathWithObjects("Singapore Changi Airport", "Fukuoka Airport", searchParameter))
-    # # testing astar
-    # print(flight_pathing.getShortestPath("Tartu Airport", "Cape Town International Airport", searchParameter,
-    #                                      "astar"))  # 1, 3363
-    # print(
-    #     flight_pathing.getShortestPath("Narita International Airport", "Incheon International Airport", searchParameter,
-    #                                    "astar"))  # 1, 3363
+        print("Dijkstra Weight: ", dijkstraWeight)
+        print("Astar Weight:    ", astarWeight)
 
 
 main()
