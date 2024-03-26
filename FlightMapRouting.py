@@ -7,6 +7,7 @@ import random
 from collections import defaultdict
 
 import geopy.distance
+import copy
 
 AIRCRAFT_SPEED = 860
 PASSENGER_SIZE_747 = 440
@@ -54,7 +55,7 @@ class Vertex:
         self.weight = weight
 
     def __eq__(self, other):
-        return self.currId == other.currId
+        return (self.currId, self.prevId, self.weight) == (other.currId, other.prevId, other.weight)
 
     def __lt__(self, other):
         return self.weight < other.weight        
@@ -475,8 +476,11 @@ class bellmanford: # Doesnt work properly
         airportVertex = {srcId: Vertex(srcId, -1, 0.0) }
         airportVertex.update(initairportVertex)
 
+        iter = 0
+
         for _ in range(len(airportVertex) - 1):
-            tempvertx = airportVertex.copy()
+            iter +=1
+            tempvertx = copy.deepcopy(airportVertex)
             for vertexId in tempvertx:
                 for edges in self.routeIdMap.get(vertexId, {}).values():
                     if tempvertx[vertexId].weight + self.getWeight(edges.srcId, edges.dstId, searchParameter) < tempvertx[edges.dstId].weight:
@@ -493,6 +497,15 @@ class bellmanford: # Doesnt work properly
         #         if airportVertex[vertexId].weight + self.getWeight(edges.srcId, edges.dstId, searchParameter) < airportVertex[edges.dstId].weight:
         #             print("Negative cycle detected")
         #             return None
+                
+        screwedports = []        
+        correctports = []
+
+        for i in airportVertex:
+            if airportVertex.get(i).prevId != 0:
+                correctports.append(i)
+            else:
+                screwedports.append(i)
 
         shortest_path = []
         current_vertex = dstId
@@ -505,6 +518,7 @@ class bellmanford: # Doesnt work properly
         shortest_path.append(srcId)
         shortest_path.reverse()
 
+        print(iter)
         return shortest_path
 
 
@@ -539,6 +553,12 @@ def main():
 
         if dijkstraWeight == 0:# or dijkstraWeight == astarWeight:
             continue
+
+    # dijkstraPath = flight_pathing.getShortestPath("Kangirsuk Airport", "Co Ong Airport", searchParameter, "dijkstra")
+    # astarPath = flight_pathing.getShortestPath("Kangirsuk Airport", "Co Ong Airport", searchParameter, "astar")
+    # bellmanford = flight_pathing.getShortestPath("Kangirsuk Airport", "Co Ong Airport", searchParameter, "bellmanford")
+    # dijkstraWeight = flight_pathing.dijkstra.totalWeight
+    # astarWeight = flight_pathing.astar.totalWeight
 
         print("\nfrom: {0} To: {1}".format(airport1.name, airport2.name))
 
