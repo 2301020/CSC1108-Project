@@ -47,6 +47,19 @@ class Route:
         self.distance = None
 
 
+class Vertex:
+    def __init__(self, currId, prevId, weight):
+        self.currId = currId
+        self.prevId = prevId
+        self.weight = weight
+
+    def __eq__(self, other):
+        return self.currId == other.currId
+
+    def __lt__(self, other):
+        return self.weight < other.weight        
+
+
 class SearchParameter:
 
     def __init__(self, cost, time):
@@ -80,6 +93,7 @@ class FlightPathing:
         self.dijkstra = Dijkstra(self.routeIdMap, self.medianCost, self.medianTime, self.getTotalAirports())
         self.astar = Astar(self.idToAirportMap, self.routeIdMap, self.medianCost, self.medianTime,
                            self.getTotalAirports())
+        self.bellmanford = bellmanford(self.idToAirportMap, self.routeIdMap, self.medianCost, self.medianTime, self.getTotalAirports())
 
     def parse_airports(self, fileLocation: str):
 
@@ -186,7 +200,7 @@ class FlightPathing:
         elif algorithm == "ASTAR":
             shortestPathId = self.astar.getShortestPath(srcId, dstId, searchParameter)
         elif algorithm == "BELLMANFORD":
-            print("Nothing here yet!")
+            shortestPathId = self.bellmanford.bellmanford(srcId, dstId, searchParameter)
         shortestPathString = self._idPathToAirport(shortestPathId)
         return shortestPathString
 
@@ -280,24 +294,12 @@ class Dijkstra:
         self.searchParameter = None
         self.totalWeight = 0
 
-    class Vertex:
-        def __init__(self, currId, prevId, weight):
-            self.currId = currId
-            self.prevId = prevId
-            self.weight = weight
-
-        def __eq__(self, other):
-            return self.currId == other.currId
-
-        def __lt__(self, other):
-            return self.weight < other.weight
-
     def _dijkstra(self, srcId: int, dstId: int, searchParameter: SearchParameter) -> list[int]:
         self.totalWeight = 0
         self._setSearchParameters(srcId, dstId, searchParameter)
         weights = [sys.maxsize for i in range(self.totalAirport)]
         edgeTo = {}
-        pq = [self.Vertex(srcId, -1, 0.0)]
+        pq = [Vertex(srcId, -1, 0.0)]
         while pq:
             currVertex = heapq.heappop(pq)
             currId, currWeight = currVertex.currId, currVertex.weight
@@ -312,7 +314,7 @@ class Dijkstra:
             for nextRoute in self.routeIdMap.get(currId, {}).values():
                 nextId = nextRoute.dstId
                 nextWeight = currWeight + self.getWeight(currId, nextId, searchParameter)
-                heapq.heappush(pq, self.Vertex(nextId, currId, nextWeight))
+                heapq.heappush(pq, Vertex(nextId, currId, nextWeight))
         return None
 
     def _traverseToSrc(self, spTree: dict, dstId: int) -> list[int]:
@@ -439,6 +441,73 @@ class Astar:
                     priority = tentative_g_score + self.heuristic_cost_estimate(neighbor, dstId, searchParameter)
                     open_list.put((priority, neighbor))
         return []
+    
+
+class bellmanford: # Doesnt work properly 
+
+    def __init__(self, idToAirportMap, routeIdMap, medianCost, medianTime, totalAirports):
+        self.idToAirportMap = idToAirportMap
+        self.routeIdMap = routeIdMap
+        self.srcId = None
+        self.dstId = None
+        self.medianCost = medianCost
+        self.medianTime = medianTime
+        self.totalAirport = totalAirports
+        self.shortestPath = []
+        self.searchParameter = None
+
+        def __eq__(self, other):
+            return self.currId == other.currId
+
+        def __lt__(self, other):
+            return self.weight < other.weight
+
+    def getWeight(self, srcId: int, dstId: int, searchParameter: SearchParameter):
+        route = self.routeIdMap.get(srcId).get(dstId)
+        costWeightage = (route.cost / self.medianCost) * searchParameter.cost
+        timeWeightage = (route.time / self.medianTime) * searchParameter.time
+        weight = costWeightage + timeWeightage
+        return weight
+    
+    def bellmanford(self, srcId: int, dstId: int, searchParameter: SearchParameter):
+        initairportVertex = { i : Vertex(i, 0, sys.maxsize) for i in self.idToAirportMap}
+        del initairportVertex[srcId]
+        airportVertex = {srcId: Vertex(srcId, -1, 0.0) }
+        airportVertex.update(initairportVertex)
+
+        for _ in range(len(airportVertex) - 1):
+            tempvertx = airportVertex.copy()
+            for vertexId in tempvertx:
+                for edges in self.routeIdMap.get(vertexId, {}).values():
+                    if tempvertx[vertexId].weight + self.getWeight(edges.srcId, edges.dstId, searchParameter) < tempvertx[edges.dstId].weight:
+                        tempvertx[edges.dstId].weight = tempvertx[vertexId].weight + self.getWeight(edges.srcId, edges.dstId, searchParameter)   
+                        tempvertx[edges.dstId].prevId = vertexId
+            if tempvertx == airportVertex:
+                break
+            else:
+                airportVertex = tempvertx
+    
+        # # Check for negative cycles
+        # for vertexId in airportVertex:
+        #     for edges in self.routeIdMap.get(vertexId, {}).values():
+        #         if airportVertex[vertexId].weight + self.getWeight(edges.srcId, edges.dstId, searchParameter) < airportVertex[edges.dstId].weight:
+        #             print("Negative cycle detected")
+        #             return None
+
+        shortest_path = []
+        current_vertex = dstId
+        while current_vertex != srcId:
+            if airportVertex[current_vertex].prevId == 0:
+                break
+            shortest_path.append(current_vertex)
+            print(airportVertex[current_vertex].prevId)
+            current_vertex = airportVertex[current_vertex].prevId
+        shortest_path.append(srcId)
+        shortest_path.reverse()
+
+        return shortest_path
+
+
 
 def readAirportAndRoutes():
     # Get the directory of the current script
@@ -457,13 +526,14 @@ def main():
     flight_pathing = readAirportAndRoutes()
     searchParameter = flight_pathing.createSearchParameter(0.8, 0.2)
 
-    for i in range(50):
+    for _ in range(50):
         airportList = list(flight_pathing.idToAirportMap.values())
         airport1 = random.choice(airportList)
         airport2 = random.choice(airportList)
 
         dijkstraPath = flight_pathing.getShortestPath(airport1.name, airport2.name, searchParameter, "dijkstra")
         astarPath = flight_pathing.getShortestPath(airport1.name, airport2.name, searchParameter, "astar")
+        bellmanford = flight_pathing.getShortestPath(airport1.name, airport2.name, searchParameter, "bellmanford")
         dijkstraWeight = flight_pathing.dijkstra.totalWeight
         astarWeight = flight_pathing.astar.totalWeight
 
@@ -474,6 +544,7 @@ def main():
 
         print("Dijkstra: ", dijkstraPath)
         print("Astar:    ", astarPath)
+        print("Bellman-Ford:    ", bellmanford)
 
         print("Dijkstra Weight: ", dijkstraWeight)
         print("Astar Weight:    ", astarWeight)
