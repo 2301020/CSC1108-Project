@@ -112,7 +112,7 @@ class App(customtkinter.CTk):
         self.algor_label.grid(column=0, row=4, sticky="EW", padx=5, pady=5)
         
         self.algorthim_selection = customtkinter.StringVar()
-        self.algor_dropDownList = customtkinter.CTkComboBox(self.radio_frame, corner_radius=0, fg_color=None, values=["dijkstra", "astar", "Bellman-Ford"], variable=self.algorthim_selection, cursor="hand2", state="readonly" )
+        self.algor_dropDownList = customtkinter.CTkComboBox(self.radio_frame, corner_radius=0, fg_color=None, values=["Dijkstra", "Astar", "Bellman-Ford"], variable=self.algorthim_selection, cursor="hand2", state="readonly" )
         self.algorthim_selection.set("Dijkstra")
         self.algor_dropDownList.grid(column=0, row=5, sticky="EW", padx=5, pady=10)
         
@@ -151,7 +151,7 @@ class App(customtkinter.CTk):
         # shortest_path = self.flight_pathing.getShortestPath(self.source, self.destination)
         # print(shortest_path)
         
-        self.airport_route = self.flight_pathing.getShortestPathWithObjects(source, destination, self.get_radiobutton_value()) #, self.algorthim_selection.get())
+        self.airport_route = self.flight_pathing.getShortestPathWithObjects(source, destination, self.get_radiobutton_value(), self.algorthim_selection.get())
         print(self.airport_route)
         self.displayFlightResults(self.airport_route)
         # sourceLocation = self.map_widget.set_address(source, marker=True)
