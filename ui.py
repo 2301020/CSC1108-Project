@@ -1,3 +1,4 @@
+from typing import Tuple
 import customtkinter
 from CTkMessagebox import CTkMessagebox
 from tkintermapview import TkinterMapView
@@ -139,7 +140,7 @@ class App(customtkinter.CTk):
 
         self.algorthim_selection = customtkinter.StringVar()
         self.algor_dropDownList = customtkinter.CTkComboBox(self.radio_frame, corner_radius=0, fg_color=None, values=[
-                                                            "dijkstra", "astar", "Bellman-Ford"], variable=self.algorthim_selection, cursor="hand2", state="readonly")
+                                                            "Dijkstra", "Astar", "BellmanFord"], variable=self.algorthim_selection, cursor="hand2", state="readonly")
         self.algorthim_selection.set("Dijkstra")
         self.algor_dropDownList.grid(
             column=0, row=5, sticky="EW", padx=5, pady=10)
@@ -150,6 +151,8 @@ class App(customtkinter.CTk):
 
         self.airport_list = []
         self.airport_route = []
+        self.toplevel_window = None
+
 
     def getAirports(self):
         self.airport_list = sorted(
@@ -235,33 +238,33 @@ class App(customtkinter.CTk):
 
     def displayFlightResults(self, airportList: list[FlightMapRouting.Airport]):
         self.flight_info = customtkinter.CTkLabel(
-            self.frame_bottom, text="Flight Information")
+            self.frame_bottom, text="Possible routes")
         self.flight_info.grid(column=0, row=0, sticky="EW", padx=5, pady=5)
-        self.starting_airport = customtkinter.CTkLabel(
-            self.frame_bottom, text="Starting Airport")
-        self.starting_airport.grid(
-            column=0, row=1, sticky="EW", padx=5, pady=5)
-
-        self.flight_info_frame = customtkinter.CTkScrollableFrame(
+        
+        self.route_list_frame = customtkinter.CTkScrollableFrame(
             self.frame_bottom, corner_radius=0)
-        self.flight_info_frame.grid(
-            column=0, row=2, sticky="EW", padx=5, pady=5)
-
-        previous_airport = None
-        for index, airport in enumerate(airportList):
-            self.plotPath(airport, previous_airport)
-            self.stop_number = customtkinter.CTkLabel(
-                self.flight_info_frame, text=f"Stop {index+1}")
-            self.stop_number.grid(column=0, row=index,
-                                  sticky="EW", padx=5, pady=5)
-
-            airport_frame = customtkinter.CTkFrame(
-                self.flight_info_frame, corner_radius=0)
-            self.createAirportFrame(airport_frame, airport)
-            airport_frame.grid(column=1, row=index,
-                               sticky="EW", padx=5, pady=5)
-
-            previous_airport = airport
+        self.route_list_frame.grid(column=0, row=1, sticky="EW", padx=5, pady=5)
+        self.route_list_frame.grid_columnconfigure(0, weight=1)
+        
+        self.route_number = customtkinter.CTkLabel(self.route_list_frame, text=f"Route {0+1}")
+        self.route_number.grid(column=0, row=0,sticky="EW", padx=5, pady=5)
+        self.route_frame = customtkinter.CTkFrame(self.route_list_frame, corner_radius=0)
+        self.route_frame.grid(column=1, row=0, sticky="EW", padx=5, pady=5)
+        airport_names = ' -> '.join([airport.name for airport in airportList])
+        self.route_list = customtkinter.CTkLabel(self.route_frame, text=airport_names)
+        self.route_list.grid(column=0, row=0, sticky="EW", padx=5, pady=5)
+        self.more_details_button = customtkinter.CTkButton(self.route_frame, text="More details", command=lambda: RouteDetails.displayRouteDetails(airportList))
+        self.more_details_button.grid(column=1, row=0, sticky="EW", padx=5, pady=5)
+        
+        # for index, airport in enumerate(airportList):
+            
+        
+        # if self.toplevel_window is not None or not self.toplevel_window.winfo_exists():
+        #     self.toplevel_window = RouteDetails(self)
+        #     self.toplevel_window.displayRouteDetails(airportList)
+        # else:
+        #     self.toplevel_window.displayRouteDetails(airportList)
+        
 
     def createAirportFrame(self,airport_frame: customtkinter.CTkFrame, airport: FlightMapRouting.Airport) -> customtkinter.CTkFrame:
         airport_frame.grid_columnconfigure(0, weight=1)
@@ -294,6 +297,40 @@ class App(customtkinter.CTk):
 
     def start(self):
         self.mainloop()
+        
+class RouteDetails(customtkinter.CTkToplevel):
+    def __init__(self, *args, fg_color: str | Tuple[str, str] | None = None, **kwargs):
+        super().__init__(*args, fg_color=fg_color, **kwargs)
+        super.geometry("500x500")
+        self.title("Route Details")
+        
+        
+    def displayRouteDetails(self, airportList: list[FlightMapRouting.Airport]):
+        
+        self.flight_info_frame = customtkinter.CTkScrollableFrame(self, corner_radius=0)
+        self.flight_info_frame.grid(column=0, row=0, sticky="EW", padx=5, pady=5)
+
+        if self.flight_info_frame is not None:
+            self.flight_info_frame.destroy()
+            self.flight_info_frame = customtkinter.CTkScrollableFrame(self, corner_radius=0)
+            self.flight_info_frame.grid(column=0, row=0, sticky="EW", padx=5, pady=5)
+        
+        previous_airport = None
+        for index, airport in enumerate(airportList):
+            App.plotPath(airport, previous_airport)
+            self.stop_number = customtkinter.CTkLabel(
+                self.flight_info_frame, text=f"Stop {index+1}")
+            self.stop_number.grid(column=0, row=index,
+                                  sticky="EW", padx=5, pady=5)
+
+            airport_frame = customtkinter.CTkFrame(
+                self.flight_info_frame, corner_radius=0)
+            App.createAirportFrame(airport_frame, airport)
+            airport_frame.grid(column=1, row=index,
+                               sticky="EW", padx=5, pady=5)
+
+            previous_airport = airport
+
 
 
 if __name__ == "__main__":
