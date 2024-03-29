@@ -154,8 +154,8 @@ class FlightPathing:
     def getTotalAirports(self):
         return self.totalAirports
 
-    def createSearchParameter(self, dist: float, cost: float) -> SearchParameter:
-        return SearchParameter(dist, cost)
+    def createSearchParameter(self, cost: float, time: float) -> SearchParameter:
+        return SearchParameter(cost, time)
 
     def _idPathToAirport(self, shortestPath: list[int]) -> list[Airport]:
         airports = []
@@ -293,8 +293,8 @@ class Dijkstra:
         edgeTo = {}
         pq = [Vertex(srcId, -1, 0.0)]
         while pq:
-            self.nodes_searched += 1
             currVertex = heapq.heappop(pq)
+            self.nodes_searched += 1
             currId, currWeight = currVertex.currId, currVertex.weight
             if currWeight >= weights[currId]:
                 continue
@@ -402,28 +402,28 @@ class Astar:
 
     def getShortestPath(self, srcId: int, dstId: int, searchParameter: SearchParameter) -> list[int]:
         open_list = PriorityQueue()
-        open_list.put((0, srcId))
-        came_from = {}
-        g_score = {srcId: 0}
+        open_list.put((0, srcId))  # Priority queue for which airport to next search
+        came_from = {}  # Dictionary that contains the shortest path so far
+        g_score = {srcId: 0}  # stores the actual cost from the source node to each node encountered so far.
 
         while not open_list.empty():
             self.nodes_searched += 1
-            current_cost, current = open_list.get()
+            current_cost, current_airport_id = open_list.get()
 
-            if current == dstId:
-                path = [current]
-                while current in came_from:
-                    current = came_from[current]
-                    path.append(current)
+            if current_airport_id == dstId:
+                path = [current_airport_id]
+                while current_airport_id in came_from:
+                    current_airport_id = came_from[current_airport_id]
+                    path.append(current_airport_id)
                 path.reverse()
                 return path
 
-            for neighbor in self.routeIdMap.get(current, {}):
-                tentative_g_score = g_score[current] + self.getWeight(current, neighbor, searchParameter)
-                if neighbor not in g_score or tentative_g_score < g_score[neighbor]:
-                    came_from[neighbor] = current
+            for neighbor in self.routeIdMap.get(current_airport_id, {}):
+                tentative_g_score = g_score[current_airport_id] + self.getWeight(current_airport_id, neighbor, searchParameter)  # Cost to reach neighbour from current node (cost to go to current node plus cost to travel to neighbour node) (will be updated as it goes by)
+                if neighbor not in g_score or tentative_g_score < g_score[neighbor]:  # Updates the cost to reach the neighbour if it is less than the current cost to reach the neighbour that is recorded in g_score
+                    came_from[neighbor] = current_airport_id
                     g_score[neighbor] = tentative_g_score
-                    priority = tentative_g_score + self.heuristic_cost_estimate(neighbor, dstId, searchParameter)
+                    priority = tentative_g_score + self.heuristic_cost_estimate(neighbor, dstId, searchParameter)  # Calculates priority by adding the cost to reach the neighbour from the current node and the heuristic cost and time based off of euclidean distance between destination and neighbour
                     open_list.put((priority, neighbor))
         return []
     
@@ -513,6 +513,17 @@ def main():
 
     #This is the test function to test functionality of FlightMapRouting.py
 
+    for _ in range(5):
+        flight_pathing = readAirportAndRoutes()
+        searchParameter = flight_pathing.createSearchParameter(0.8, 0.2)
+        airport1 = "Tobago-Crown Point Airport"
+        airport2 = "Marau Airport"
+        astarPath = flight_pathing.getShortestPathStr(airport1, airport2, searchParameter, "astar")
+        astarNodes = flight_pathing.astar.nodes_searched
+        print("Astar: ", astarPath)
+        print("Astar: ", astarNodes)
+
+
     flight_pathing = readAirportAndRoutes()
     searchParameter = flight_pathing.createSearchParameter(0.8, 0.2)
 
@@ -539,8 +550,8 @@ def main():
         print("Bellman-Ford:    ", bellmanford)
 
         print("Number of nodes visited by each algorithm")
-        print("Dijkstra: ", dijkstraNodes)
-        print("Astar:    ", astarNodes)
+        print("Dijkstra:     ", dijkstraNodes)
+        print("Astar:        ", astarNodes)
         print("Bellman-Ford: ", bellmanfordNodes)
 
 
