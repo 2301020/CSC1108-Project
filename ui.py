@@ -81,6 +81,8 @@ class App(customtkinter.CTk):
         except requests.Timeout:
             CTkMessagebox(
                 title="Error", message="Connection timeout. Map will not be displayed")
+        except AttributeError:
+            pass
 
         self.source_label = customtkinter.CTkLabel(
             self.frame_right, text="Source Country/Airport")
@@ -170,8 +172,8 @@ class App(customtkinter.CTk):
 
         self.algorthim_selection = customtkinter.StringVar()
         self.algor_dropDownList = customtkinter.CTkComboBox(self.radio_frame, corner_radius=0, fg_color=None, values=[
-                                                            "Dijkstra", "Astar", "BellmanFord"], variable=self.algorthim_selection, cursor="hand2", state="readonly")
-        self.algorthim_selection.set("Dijkstra")
+                                                            "Astar", "Bellman-Ford", "Dijkstra"], variable=self.algorthim_selection, cursor="hand2", state="readonly")
+        self.algorthim_selection.set("Astar")
         self.algor_dropDownList.grid(
             column=0, row=5, sticky="EW", padx=5, pady=10, columnspan=2)
 
