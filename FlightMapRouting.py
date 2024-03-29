@@ -38,7 +38,6 @@ class Airport:
 
 
 class Route:
-
     # https://www.statista.com/statistics/978646/cost-per-available-seat-mile-united-airlines/
     def __init__(self, srcId, dstId):
         self.srcId = srcId
