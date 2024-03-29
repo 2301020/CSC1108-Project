@@ -194,7 +194,7 @@ class App(customtkinter.CTk):
         
         airport_route_string = self.flight_pathing.getShortestPath(
             source, destination, self.get_radiobutton_value(), self.algorthim_selection.get())
-        if airport_route_string is None:
+        if airport_route_string == []:
             CTkMessagebox(
                 title="Error", message="No route found")
             return
