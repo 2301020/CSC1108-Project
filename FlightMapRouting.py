@@ -90,6 +90,8 @@ class FlightPathing:
         self.median = MedianCostAndTime(self.routeIdMap)
         self.medianCost = self.median.getMedianCost()
         self.medianTime = self.median.getMedianTime()
+        self.totalTime = 0
+        self.totalCost = 0
         self.dijkstra = Dijkstra(self.routeIdMap, self.medianCost, self.medianTime, self.getTotalAirports())
         self.astar = Astar(self.idToAirportMap, self.routeIdMap, self.medianCost, self.medianTime,
                            self.getTotalAirports())
@@ -180,7 +182,7 @@ class FlightPathing:
             airports.append(self.airportToIdMap.get(airport).airportId)
         return airports
 
-    def getShortestPathId(self, srcAirport: str, dstAirport: str, searchParameter: SearchParameter, algorithm: str) -> list[Airport]:
+    def getShortestPathId(self, srcAirport: str, dstAirport: str, searchParameter: SearchParameter, algorithm: str) -> list[int]:
         # Check for valid algorithm: dijkstra/astar/bellmanford
         algorithm = algorithm.upper()
         if not algorithm == "DIJKSTRA" and not algorithm == "ASTAR" and not algorithm == "BELLMAN-FORD":
@@ -194,12 +196,12 @@ class FlightPathing:
 
         # get the shortest path
         shortestPathId = []
-        if algorithm == "DIJKSTRA":
-            shortestPathId = self.dijkstra.getShortestPath(srcId, dstId, searchParameter)
-        elif algorithm == "ASTAR":
+        if algorithm == "ASTAR":
             shortestPathId = self.astar.getShortestPath(srcId, dstId, searchParameter)
         elif algorithm == "BELLMAN-FORD":
             shortestPathId = self.bellmanford.bellmanford(srcId, dstId, searchParameter)
+        elif algorithm == "DIJKSTRA":
+            shortestPathId = self.dijkstra.getShortestPath(srcId, dstId, searchParameter)
         return shortestPathId
 
     def getShortestPathStr(self, srcAirport: str, dstAirport: str, searchParameter: SearchParameter, algorithm: str):
@@ -221,26 +223,25 @@ class FlightPathing:
             raise TypeError("Method existByAirportId(): Airport name cannot be None")
         return airportName in self.idToAirportMap
 
-    def getTotalCost(self, srcAirport: str, dstAirport: str, searchParameter: SearchParameter) -> float:
-        # get airport id
+    def _calculateTotalMetric(self, routePathId: list[int], metric: str) -> float:
+        totalMetric = 0
 
-        if self.existsByAirportName(srcAirport) is None or self.existsByAirportName(dstAirport) is None:
-            raise TypeError("Method getShortestPath(): {0} / {1} cannot be None".format(srcAirport, dstAirport))
+        if routePathId is not None:
+            for i in range(1, len(routePathId)):
+                currId = routePathId[i - 1]
+                nextId = routePathId[i]
+                route = self.routeIdMap.get(currId).get(nextId)
+                if metric == "cost":
+                    totalMetric += route.cost
+                elif metric == "time":
+                    totalMetric += route.time
+        return totalMetric
 
-        srcId = self.airportToIdMap.get(srcAirport).airportId
-        dstId = self.airportToIdMap.get(dstAirport).airportId
+    def getTotalCost(self, routePathId: list[int]) -> float:
+        return self._calculateTotalMetric(routePathId, "cost")
 
-        return self.dijkstra.getTotalCost(srcId, dstId, searchParameter)
-
-    def getTotalTime(self, srcAirport: str, dstAirport: str, searchParameter: SearchParameter) -> float:
-        # get airport id
-        if self.existsByAirportName(srcAirport) is None or self.existsByAirportName(dstAirport) is None:
-            raise TypeError("Method getShortestPath(): {0} / {1} cannot be None".format(srcAirport, dstAirport))
-
-        srcId = self.airportToIdMap.get(srcAirport).airportId
-        dstId = self.airportToIdMap.get(dstAirport).airportId
-
-        return self.dijkstra.getTotalTime(srcId, dstId, searchParameter)
+    def getTotalTime(self, routePathId: list[int]) -> float:
+        return self._calculateTotalMetric(routePathId, "time")
 
 
 class MedianCostAndTime:
@@ -338,28 +339,6 @@ class Dijkstra:
         weight = costWeightage + timeWeightage
         return weight
 
-    def _calculateTotalMetric(self, srcId: int, dstId: int, searchParameter: SearchParameter, metric: str) -> float:
-        if srcId != self.srcId or dstId != self.dstId or searchParameter != self.searchParameter:
-            self.shortestPath = self._dijkstra(srcId, dstId, searchParameter)
-
-        totalMetric = 0
-        if self.shortestPath is not None:
-            for i in range(1, len(self.shortestPath)):
-                currId = self.shortestPath[i - 1]
-                nextId = self.shortestPath[i]
-                route = self.routeIdMap.get(currId).get(nextId)
-                if metric == "cost":
-                    totalMetric += route.cost
-                elif metric == "time":
-                    totalMetric += route.time
-        return totalMetric
-
-    def getTotalCost(self, srcId: int, dstId: int, searchParameter: SearchParameter) -> float:
-        return self._calculateTotalMetric(srcId, dstId, searchParameter, "cost")
-
-    def getTotalTime(self, srcId: int, dstId: int, searchParameter: SearchParameter) -> float:
-        return self._calculateTotalMetric(srcId, dstId, searchParameter, "time")
-
 
 class Astar:
     def __init__(self, idToAirportMap, routeIdMap, medianCost, medianTime, totalAirports):
@@ -416,7 +395,8 @@ class Astar:
                     current_airport_id = came_from[current_airport_id]
                     path.append(current_airport_id)
                 path.reverse()
-                return path
+                self.shortestPath = path
+                return self.shortestPath
 
             for neighbor in self.routeIdMap.get(current_airport_id, {}):
                 tentative_g_score = g_score[current_airport_id] + self.getWeight(current_airport_id, neighbor, searchParameter)  # Cost to reach neighbour from current node (cost to go to current node plus cost to travel to neighbour node) (will be updated as it goes by)
@@ -492,10 +472,9 @@ class bellmanford:
             current_vertex = airportVertex[current_vertex].prevId
 
         shortest_path.reverse()
+        self.shortestPath = shortest_path
 
-        return shortest_path
-
-
+        return self.shortestPath
 
 def readAirportAndRoutes():
     # Get the directory of the current script
@@ -513,22 +492,23 @@ def main():
 
     #This is the test function to test functionality of FlightMapRouting.py
 
-    for _ in range(5):
-        flight_pathing = readAirportAndRoutes()
-        searchParameter = flight_pathing.createSearchParameter(0.8, 0.2)
-        airport1 = "Tobago-Crown Point Airport"
-        airport2 = "Marau Airport"
-        astarPath = flight_pathing.getShortestPathStr(airport1, airport2, searchParameter, "astar")
-        astarNodes = flight_pathing.astar.nodes_searched
-        print("Astar: ", astarPath)
-        print("Astar: ", astarNodes)
-
 
     flight_pathing = readAirportAndRoutes()
     searchParameter = flight_pathing.createSearchParameter(0.8, 0.2)
+    airportList = list(flight_pathing.idToAirportMap.values())
+
+    airport1 = "Tobago-Crown Point Airport"
+    airport2 = "Marau Airport"
+    astarPath = flight_pathing.getShortestPathStr(airport1, airport2, searchParameter, "astar")
+    astarPathId = flight_pathing.astar.shortestPath
+    astarCost = flight_pathing.getTotalCost(astarPathId)
+    astarTime = flight_pathing.getTotalTime(astarPathId)
+
+    print(astarPath)
+    print(astarCost)
+    print(astarTime)
 
     for _ in range(50):
-        airportList = list(flight_pathing.idToAirportMap.values())
         airport1 = random.choice(airportList)
         airport2 = random.choice(airportList)
 
@@ -538,6 +518,9 @@ def main():
         dijkstraNodes = flight_pathing.dijkstra.nodes_searched
         astarNodes = flight_pathing.astar.nodes_searched
         bellmanfordNodes = flight_pathing.bellmanford.nodes_searched
+
+        # Cost_dijkstra = flight_pathing.getTotalCost(airport1.name, airport2.name, searchParameter)
+        # Time_dijkstra = flight_pathing.getTotalTime(airport1.name, airport2.name, searchParameter)
 
         if dijkstraPath == []:# or dijkstraWeight == astarWeight:
             continue
@@ -555,5 +538,6 @@ def main():
         print("Bellman-Ford: ", bellmanfordNodes)
 
 
-# if __name__ == "__main__":
-#     main()
+
+if __name__ == "__main__":
+    main()
