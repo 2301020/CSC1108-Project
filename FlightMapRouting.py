@@ -181,8 +181,7 @@ class FlightPathing:
             airports.append(self.airportToIdMap.get(airport).airportId)
         return airports
 
-    def getShortestPath(self, srcAirport: str, dstAirport: str, searchParameter: SearchParameter, algorithm: str) -> \
-    list[Airport]:
+    def getShortestPathId(self, srcAirport: str, dstAirport: str, searchParameter: SearchParameter, algorithm: str) -> list[Airport]:
         # Check for valid algorithm: dijkstra/astar/bellmanford
         algorithm = algorithm.upper()
         if not algorithm == "DIJKSTRA" and not algorithm == "ASTAR" and not algorithm == "BELLMAN-FORD":
@@ -202,33 +201,16 @@ class FlightPathing:
             shortestPathId = self.astar.getShortestPath(srcId, dstId, searchParameter)
         elif algorithm == "BELLMAN-FORD":
             shortestPathId = self.bellmanford.bellmanford(srcId, dstId, searchParameter)
-        shortestPathString = self._idPathToAirport(shortestPathId)
-        return shortestPathString
+        return shortestPathId
+
+    def getShortestPathStr(self, srcAirport: str, dstAirport: str, searchParameter: SearchParameter, algorithm: str):
+        calculatedPathId = self.getShortestPathId(srcAirport, dstAirport, searchParameter, algorithm)
+        return self._idPathToAirport(calculatedPathId)
 
     # returns airport objects in a list
-    def getShortestPathWithObjects(self, srcAirport: str, dstAirport: str, searchParameter: SearchParameter) -> list[
-        Airport]:
-        # Check for valid algorithm: dijkstra/astar/bellmanford
-        algorithm = algorithm.upper()
-        if not algorithm == "DIJKSTRA" and not algorithm == "ASTAR" and not algorithm == "BELLMAN-FORD":
-            raise TypeError("No such algorithm supported.")
-
-        # get airport id
-        if not self.existsByAirportName(srcAirport) or not self.existsByAirportName(dstAirport):
-            raise TypeError("Method getShortestPath(): srcAirport / dstAirport cannot be None")
-        srcId = self.airportToIdMap.get(srcAirport).airportId
-        dstId = self.airportToIdMap.get(dstAirport).airportId
-
-        # get the shortest path     
-        shortestPathId = []
-        if algorithm == "DIJKSTRA":
-            shortestPathId = self.dijkstra.getShortestPath(srcId, dstId, searchParameter)
-        elif algorithm == "ASTAR":
-            shortestPathId = self.astar.getShortestPath(srcId, dstId, searchParameter)
-        elif algorithm == "BELLMAN-FORD":
-            shortestPathId = self.bellmanford.bellmanford(srcId, dstId, searchParameter)
-        shortestPathObjects = self._idPathtoAirportObjects(shortestPathId)
-        return shortestPathObjects
+    def getShortestPathWithObjects(self, srcAirport: str, dstAirport: str, searchParameter: SearchParameter, algorithm: str):
+        calculatedPathId = self.getShortestPathId(srcAirport, dstAirport, searchParameter, algorithm)
+        return self._idPathtoAirportObjects(calculatedPathId)
 
     def existsByAirportName(self, airportName: str) -> bool:
         if airportName is None:
@@ -304,15 +286,15 @@ class Dijkstra:
         self.totalAirport = totalAirports
         self.shortestPath = []
         self.searchParameter = None
-        self.totalWeight = 0
+        self.nodes_searched = 0
 
     def _dijkstra(self, srcId: int, dstId: int, searchParameter: SearchParameter) -> list[int]:
-        self.totalWeight = 0
         self._setSearchParameters(srcId, dstId, searchParameter)
         weights = [sys.maxsize for i in range(self.totalAirport)]
         edgeTo = {}
         pq = [Vertex(srcId, -1, 0.0)]
         while pq:
+            self.nodes_searched += 1
             currVertex = heapq.heappop(pq)
             currId, currWeight = currVertex.currId, currVertex.weight
             if currWeight >= weights[currId]:
@@ -320,7 +302,6 @@ class Dijkstra:
             weights[currId] = currWeight
             edgeTo[currId] = currVertex.prevId
             if currId == dstId:
-                self.totalWeight = currWeight  # Update total weight
                 return self._traverseToSrc(edgeTo, dstId)
             nextRoute: Route
             for nextRoute in self.routeIdMap.get(currId, {}).values():
@@ -392,7 +373,7 @@ class Astar:
         self.totalAirport = totalAirports
         self.shortestPath = []
         self.searchParameter = None
-        self.totalWeight = 0
+        self.nodes_searched = 0
 
     def getWeight(self, srcId: int, dstId: int, searchParameter: SearchParameter):
         route = self.routeIdMap.get(srcId).get(dstId)
@@ -425,9 +406,9 @@ class Astar:
         open_list.put((0, srcId))
         came_from = {}
         g_score = {srcId: 0}
-        self.totalWeight = 0
 
         while not open_list.empty():
+            self.nodes_searched += 1
             current_cost, current = open_list.get()
 
             if current == dstId:
@@ -436,13 +417,6 @@ class Astar:
                     current = came_from[current]
                     path.append(current)
                 path.reverse()
-
-                # Calculate total weight of the journey
-                total_weight = 0
-                for i in range(len(path) - 1):
-                    total_weight += self.getWeight(path[i], path[i+1], searchParameter)
-                self.totalWeight = total_weight
-
                 return path
 
             for neighbor in self.routeIdMap.get(current, {}):
@@ -467,6 +441,7 @@ class bellmanford:
         self.totalAirport = totalAirports
         self.shortestPath = []
         self.searchParameter = None
+        self.nodes_searched = 0
 
         def __eq__(self, other):
             return self.currId == other.currId
@@ -482,22 +457,23 @@ class bellmanford:
         return weight
     
     def bellmanford(self, srcId: int, dstId: int, searchParameter: SearchParameter):
-        initairportVertex = { i : Vertex(i, 0, sys.maxsize) for i in self.idToAirportMap}
-        del initairportVertex[srcId]
-        airportVertex = {srcId: Vertex(srcId, -1, 0.0) }
-        airportVertex.update(initairportVertex)
+        initAirportVertex = {i: Vertex(i, 0, sys.maxsize) for i in self.idToAirportMap}
+        del initAirportVertex[srcId]
+        airportVertex = {srcId: Vertex(srcId, -1, 0.0)}
+        airportVertex.update(initAirportVertex)
 
         for _ in range(len(airportVertex) - 1):
-            tempvertx = copy.deepcopy(airportVertex)
-            for vertexId in tempvertx:
+            tempVertex = copy.deepcopy(airportVertex)
+            for vertexId in tempVertex:
                 for edges in self.routeIdMap.get(vertexId, {}).values():
-                    if tempvertx[vertexId].weight + self.getWeight(edges.srcId, edges.dstId, searchParameter) < tempvertx[edges.dstId].weight:
-                        tempvertx[edges.dstId].weight = tempvertx[vertexId].weight + self.getWeight(edges.srcId, edges.dstId, searchParameter)   
-                        tempvertx[edges.dstId].prevId = vertexId
-            if tempvertx == airportVertex:
+                    self.nodes_searched += 1
+                    if tempVertex[vertexId].weight + self.getWeight(edges.srcId, edges.dstId, searchParameter) < tempVertex[edges.dstId].weight:
+                        tempVertex[edges.dstId].weight = tempVertex[vertexId].weight + self.getWeight(edges.srcId, edges.dstId, searchParameter)
+                        tempVertex[edges.dstId].prevId = vertexId
+            if tempVertex == airportVertex:
                 break
             else:
-                airportVertex = tempvertx
+                airportVertex = tempVertex
     
         # # Checks for negative cycles, this is not neccessary in this case because our graph does not have any negative edges
         # for vertexId in airportVertex:
@@ -505,6 +481,8 @@ class bellmanford:
         #         if airportVertex[vertexId].weight + self.getWeight(edges.srcId, edges.dstId, searchParameter) < airportVertex[edges.dstId].weight:
         #             print("Negative cycle detected")
         #             return None
+
+        # Calculate the total weight of the journey of each airport it visits
 
         shortest_path = []
         current_vertex = dstId
@@ -544,22 +522,28 @@ def main():
         airport1 = random.choice(airportList)
         airport2 = random.choice(airportList)
 
-        dijkstraPath = flight_pathing.getShortestPath(airport1.name, airport2.name, searchParameter, "dijkstra")
-        astarPath = flight_pathing.getShortestPath(airport1.name, airport2.name, searchParameter, "astar")
-        bellmanford = flight_pathing.getShortestPath(airport1.name, airport2.name, searchParameter, "bellman-ford")
-        dijkstraWeight = flight_pathing.dijkstra.totalWeight
-        astarWeight = flight_pathing.astar.totalWeight
+        dijkstraPath = flight_pathing.getShortestPathStr(airport1.name, airport2.name, searchParameter, "dijkstra")
+        astarPath = flight_pathing.getShortestPathStr(airport1.name, airport2.name, searchParameter, "astar")
+        bellmanford = flight_pathing.getShortestPathStr(airport1.name, airport2.name, searchParameter, "bellman-ford")
+        dijkstraNodes = flight_pathing.dijkstra.nodes_searched
+        astarNodes = flight_pathing.astar.nodes_searched
+        bellmanfordNodes = flight_pathing.bellmanford.nodes_searched
 
-        if dijkstraWeight == 0:# or dijkstraWeight == astarWeight:
+        if dijkstraPath == []:# or dijkstraWeight == astarWeight:
             continue
 
         print("\nfrom: {0} To: {1}".format(airport1.name, airport2.name))
 
+        print("Shortest path for each algorithm")
         print("Dijkstra:        ", dijkstraPath)
         print("Astar:           ", astarPath)
         print("Bellman-Ford:    ", bellmanford)
 
-        print("Dijkstra Weight: ", dijkstraWeight)
-        print("Astar Weight:    ", astarWeight)
+        print("Number of nodes visited by each algorithm")
+        print("Dijkstra: ", dijkstraNodes)
+        print("Astar:    ", astarNodes)
+        print("Bellman-Ford: ", bellmanfordNodes)
 
-# main()
+
+# if __name__ == "__main__":
+#     main()
