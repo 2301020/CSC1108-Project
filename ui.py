@@ -192,7 +192,7 @@ class App(customtkinter.CTk):
                 title="Error", message="Invalid source or destination")
             return
         
-        airport_route_string = self.flight_pathing.getShortestPath(
+        airport_route_string = self.flight_pathing.getShortestPathStr(
             source, destination, self.get_radiobutton_value(), self.algorthim_selection.get())
         if airport_route_string == []:
             CTkMessagebox(
