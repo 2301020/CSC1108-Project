@@ -286,7 +286,7 @@ class Dijkstra:
         self.totalAirport = totalAirports
         self.shortestPath = []
         self.searchParameter = None
-        self.nodes_searched = 0
+        self.nodes_visited = 0
 
     def _dijkstra(self, srcId: int, dstId: int, searchParameter: SearchParameter) -> list[int]:
         self._setSearchParameters(srcId, dstId, searchParameter)
@@ -295,7 +295,7 @@ class Dijkstra:
         pq = [Vertex(srcId, -1, 0.0)]
         while pq:
             currVertex = heapq.heappop(pq)
-            self.nodes_searched += 1
+            self.nodes_visited += 1
             currId, currWeight = currVertex.currId, currVertex.weight
             if currWeight >= weights[currId]:
                 continue
@@ -351,7 +351,7 @@ class Astar:
         self.totalAirport = totalAirports
         self.shortestPath = []
         self.searchParameter = None
-        self.nodes_searched = 0
+        self.nodes_visited = 0
 
     def getWeight(self, srcId: int, dstId: int, searchParameter: SearchParameter):
         route = self.routeIdMap.get(srcId).get(dstId)
@@ -386,7 +386,7 @@ class Astar:
         g_score = {srcId: 0}  # stores the actual cost from the source node to each node encountered so far.
 
         while not open_list.empty():
-            self.nodes_searched += 1
+            self.nodes_visited += 1
             current_cost, current_airport_id = open_list.get()
 
             if current_airport_id == dstId:
@@ -420,7 +420,7 @@ class bellmanford:
         self.totalAirport = totalAirports
         self.shortestPath = []
         self.searchParameter = None
-        self.nodes_searched = 0
+        self.nodes_visited = 0
 
         def __eq__(self, other):
             return self.currId == other.currId
@@ -445,7 +445,7 @@ class bellmanford:
             tempVertex = copy.deepcopy(airportVertex)
             for vertexId in tempVertex:
                 for edges in self.routeIdMap.get(vertexId, {}).values():
-                    self.nodes_searched += 1
+                    self.nodes_visited += 1
                     if tempVertex[vertexId].weight + self.getWeight(edges.srcId, edges.dstId, searchParameter) < tempVertex[edges.dstId].weight:
                         tempVertex[edges.dstId].weight = tempVertex[vertexId].weight + self.getWeight(edges.srcId, edges.dstId, searchParameter)
                         tempVertex[edges.dstId].prevId = vertexId
@@ -494,11 +494,26 @@ def main():
 
 
     flight_pathing = readAirportAndRoutes()
-    searchParameter = flight_pathing.createSearchParameter(0.8, 0.2)
+    searchParameter = flight_pathing.createSearchParameter(0.3, 0.7)
     airportList = list(flight_pathing.idToAirportMap.values())
 
     airport1 = "Tobago-Crown Point Airport"
     airport2 = "Marau Airport"
+    astarPath = flight_pathing.getShortestPathStr(airport1, airport2, searchParameter, "astar")
+    astarPathId = flight_pathing.astar.shortestPath
+    astarCost = flight_pathing.getTotalCost(astarPathId)
+    astarTime = flight_pathing.getTotalTime(astarPathId)
+
+    print(astarPath)
+    print(astarCost)
+    print(astarTime)
+
+    # flight_pathing = readAirportAndRoutes()
+    searchParameter = flight_pathing.createSearchParameter(0.7, 0.3)
+    # airportList = list(flight_pathing.idToAirportMap.values())
+
+    # airport1 = "Tobago-Crown Point Airport"
+    # airport2 = "Marau Airport"
     astarPath = flight_pathing.getShortestPathStr(airport1, airport2, searchParameter, "astar")
     astarPathId = flight_pathing.astar.shortestPath
     astarCost = flight_pathing.getTotalCost(astarPathId)
@@ -515,9 +530,9 @@ def main():
         dijkstraPath = flight_pathing.getShortestPathStr(airport1.name, airport2.name, searchParameter, "dijkstra")
         astarPath = flight_pathing.getShortestPathStr(airport1.name, airport2.name, searchParameter, "astar")
         bellmanford = flight_pathing.getShortestPathStr(airport1.name, airport2.name, searchParameter, "bellman-ford")
-        dijkstraNodes = flight_pathing.dijkstra.nodes_searched
-        astarNodes = flight_pathing.astar.nodes_searched
-        bellmanfordNodes = flight_pathing.bellmanford.nodes_searched
+        dijkstraNodes = flight_pathing.dijkstra.nodes_visited
+        astarNodes = flight_pathing.astar.nodes_visited
+        bellmanfordNodes = flight_pathing.bellmanford.nodes_visited
 
         # Cost_dijkstra = flight_pathing.getTotalCost(airport1.name, airport2.name, searchParameter)
         # Time_dijkstra = flight_pathing.getTotalTime(airport1.name, airport2.name, searchParameter)
@@ -539,5 +554,5 @@ def main():
 
 
 
-if __name__ == "__main__":
-    main()
+# if __name__ == "__main__":
+#     main()
