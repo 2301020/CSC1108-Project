@@ -183,9 +183,9 @@ class FlightPathing:
 
     def getShortestPath(self, srcAirport: str, dstAirport: str, searchParameter: SearchParameter, algorithm: str) -> \
     list[Airport]:
-        # Check for valid algorithm: dijkstra/astar
+        # Check for valid algorithm: dijkstra/astar/bellmanford
         algorithm = algorithm.upper()
-        if not algorithm == "DIJKSTRA" and not algorithm == "ASTAR" and not algorithm == "BELLMANFORD":
+        if not algorithm == "DIJKSTRA" and not algorithm == "ASTAR" and not algorithm == "BELLMAN-FORD":
             raise TypeError("No such algorithm supported.")
 
         # get airport id
@@ -195,12 +195,12 @@ class FlightPathing:
         dstId = self.airportToIdMap.get(dstAirport).airportId
 
         # get the shortest path
-        shortestPathId = "No such algorithm"
+        shortestPathId = []
         if algorithm == "DIJKSTRA":
             shortestPathId = self.dijkstra.getShortestPath(srcId, dstId, searchParameter)
         elif algorithm == "ASTAR":
             shortestPathId = self.astar.getShortestPath(srcId, dstId, searchParameter)
-        elif algorithm == "BELLMANFORD":
+        elif algorithm == "BELLMAN-FORD":
             shortestPathId = self.bellmanford.bellmanford(srcId, dstId, searchParameter)
         shortestPathString = self._idPathToAirport(shortestPathId)
         return shortestPathString
@@ -208,16 +208,27 @@ class FlightPathing:
     # returns airport objects in a list
     def getShortestPathWithObjects(self, srcAirport: str, dstAirport: str, searchParameter: SearchParameter) -> list[
         Airport]:
+        # Check for valid algorithm: dijkstra/astar/bellmanford
+        algorithm = algorithm.upper()
+        if not algorithm == "DIJKSTRA" and not algorithm == "ASTAR" and not algorithm == "BELLMAN-FORD":
+            raise TypeError("No such algorithm supported.")
+
         # get airport id
         if not self.existsByAirportName(srcAirport) or not self.existsByAirportName(dstAirport):
             raise TypeError("Method getShortestPath(): srcAirport / dstAirport cannot be None")
         srcId = self.airportToIdMap.get(srcAirport).airportId
         dstId = self.airportToIdMap.get(dstAirport).airportId
 
-        # get the shortest path
-        shortestPathId = self.dijkstra.getShortestPath(srcId, dstId, searchParameter)
-        shortestPathString = self._idPathtoAirportObjects(shortestPathId)
-        return shortestPathString
+        # get the shortest path     
+        shortestPathId = []
+        if algorithm == "DIJKSTRA":
+            shortestPathId = self.dijkstra.getShortestPath(srcId, dstId, searchParameter)
+        elif algorithm == "ASTAR":
+            shortestPathId = self.astar.getShortestPath(srcId, dstId, searchParameter)
+        elif algorithm == "BELLMAN-FORD":
+            shortestPathId = self.bellmanford.bellmanford(srcId, dstId, searchParameter)
+        shortestPathObjects = self._idPathtoAirportObjects(shortestPathId)
+        return shortestPathObjects
 
     def existsByAirportName(self, airportName: str) -> bool:
         if airportName is None:
@@ -444,7 +455,7 @@ class Astar:
         return []
     
 
-class bellmanford: # Doesnt work properly 
+class bellmanford: 
 
     def __init__(self, idToAirportMap, routeIdMap, medianCost, medianTime, totalAirports):
         self.idToAirportMap = idToAirportMap
@@ -476,10 +487,7 @@ class bellmanford: # Doesnt work properly
         airportVertex = {srcId: Vertex(srcId, -1, 0.0) }
         airportVertex.update(initairportVertex)
 
-        iter = 0
-
         for _ in range(len(airportVertex) - 1):
-            iter +=1
             tempvertx = copy.deepcopy(airportVertex)
             for vertexId in tempvertx:
                 for edges in self.routeIdMap.get(vertexId, {}).values():
@@ -491,34 +499,23 @@ class bellmanford: # Doesnt work properly
             else:
                 airportVertex = tempvertx
     
-        # # Check for negative cycles
+        # # Checks for negative cycles, this is not neccessary in this case because our graph does not have any negative edges
         # for vertexId in airportVertex:
         #     for edges in self.routeIdMap.get(vertexId, {}).values():
         #         if airportVertex[vertexId].weight + self.getWeight(edges.srcId, edges.dstId, searchParameter) < airportVertex[edges.dstId].weight:
         #             print("Negative cycle detected")
         #             return None
-                
-        screwedports = []        
-        correctports = []
-
-        for i in airportVertex:
-            if airportVertex.get(i).prevId != 0:
-                correctports.append(i)
-            else:
-                screwedports.append(i)
 
         shortest_path = []
         current_vertex = dstId
-        while current_vertex != srcId:
+        while current_vertex != -1:
             if airportVertex[current_vertex].prevId == 0:
                 break
             shortest_path.append(current_vertex)
-            print(airportVertex[current_vertex].prevId)
             current_vertex = airportVertex[current_vertex].prevId
-        shortest_path.append(srcId)
+
         shortest_path.reverse()
 
-        print(iter)
         return shortest_path
 
 
@@ -528,14 +525,16 @@ def readAirportAndRoutes():
     script_directory = os.path.dirname(os.path.abspath(__file__))
 
 #     # Define the relative path to the file within the Data folder
-#     airports_path = os.path.join('data', 'airports.dat')
-#     routes_path = os.path.join('data', 'routes.dat')
+    airports_path = os.path.join('data', 'airports.dat')
+    routes_path = os.path.join('data', 'routes.dat')
 
     return FlightPathing(airports_path, routes_path)
 
 def main():
 
     #display GUI here first
+
+    #This is the test function to test functionality of FlightMapRouting.py
 
     flight_pathing = readAirportAndRoutes()
     searchParameter = flight_pathing.createSearchParameter(0.8, 0.2)
@@ -547,27 +546,20 @@ def main():
 
         dijkstraPath = flight_pathing.getShortestPath(airport1.name, airport2.name, searchParameter, "dijkstra")
         astarPath = flight_pathing.getShortestPath(airport1.name, airport2.name, searchParameter, "astar")
-        bellmanford = flight_pathing.getShortestPath(airport1.name, airport2.name, searchParameter, "bellmanford")
+        bellmanford = flight_pathing.getShortestPath(airport1.name, airport2.name, searchParameter, "bellman-ford")
         dijkstraWeight = flight_pathing.dijkstra.totalWeight
         astarWeight = flight_pathing.astar.totalWeight
 
         if dijkstraWeight == 0:# or dijkstraWeight == astarWeight:
             continue
 
-    # dijkstraPath = flight_pathing.getShortestPath("Kangirsuk Airport", "Co Ong Airport", searchParameter, "dijkstra")
-    # astarPath = flight_pathing.getShortestPath("Kangirsuk Airport", "Co Ong Airport", searchParameter, "astar")
-    # bellmanford = flight_pathing.getShortestPath("Kangirsuk Airport", "Co Ong Airport", searchParameter, "bellmanford")
-    # dijkstraWeight = flight_pathing.dijkstra.totalWeight
-    # astarWeight = flight_pathing.astar.totalWeight
-
         print("\nfrom: {0} To: {1}".format(airport1.name, airport2.name))
 
-        print("Dijkstra: ", dijkstraPath)
-        print("Astar:    ", astarPath)
+        print("Dijkstra:        ", dijkstraPath)
+        print("Astar:           ", astarPath)
         print("Bellman-Ford:    ", bellmanford)
 
         print("Dijkstra Weight: ", dijkstraWeight)
         print("Astar Weight:    ", astarWeight)
-
 
 # main()
