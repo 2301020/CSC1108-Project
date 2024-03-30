@@ -75,6 +75,9 @@ class SearchParameter:
         if not isinstance(other, SearchParameter):
             return True
         return False if self.cost == other.cost and self.time == other.time else True
+    
+    def __hash__(self) -> int:
+        return hash(repr(self))
 
 
 class FlightPathing:
@@ -96,6 +99,7 @@ class FlightPathing:
         self.astar = Astar(self.idToAirportMap, self.routeIdMap, self.medianCost, self.medianTime,
                            self.getTotalAirports())
         self.bellmanford = bellmanford(self.idToAirportMap, self.routeIdMap, self.medianCost, self.medianTime, self.getTotalAirports())
+        self.shortestPaths = {}
 
     def parse_airports(self, fileLocation: str):
 
@@ -212,6 +216,35 @@ class FlightPathing:
     def getShortestPathWithObjects(self, srcAirport: str, dstAirport: str, searchParameter: SearchParameter, algorithm: str):
         calculatedPathId = self.getShortestPathId(srcAirport, dstAirport, searchParameter, algorithm)
         return self._idPathtoAirportObjects(calculatedPathId)
+    
+    def getAlternativePath(self, srcAirport: str, dstAirport: str, searchParameter: SearchParameter):
+        if not self.existsByAirportName(srcAirport) or not self.existsByAirportName(dstAirport):
+            raise TypeError("Method getShortestPath(): srcAirport / dstAirport cannot be None")
+        
+        srcIds = self.getNearestAirport(srcAirport)
+        dstIds = self.getNearestAirport(dstAirport)
+
+        shortestPathId = self.dijkstra.getShortestPathWithSets(srcIds, dstIds, searchParameter)
+        shortestPathString = self._idPathToAirport(shortestPathId)
+        return shortestPathString
+
+    def getNearestAirport(self, srcAirportName: str):
+        if not self.existsByAirportName(srcAirportName):
+            raise TypeError("Method getNearestAirport(): srcAirport cannot be None")
+        
+        nearestAirport = set()
+        srcAirport: Airport = self.airportToIdMap.get(srcAirportName)
+        pq = []
+        airportId: int
+        airport: Airport
+        for airportId, airport in self.airportToIdMap.items():
+            dist: float = self._setDist(srcAirport.airportId, airport.airportId)  
+            heapq.heappush(pq, (dist, airport.airportId))
+        for i in range(3):
+            dist, airportId = heapq.heappop(pq)
+            if dist < 100:
+                nearestAirport.add(airportId)
+        return frozenset(nearestAirport)
 
     def existsByAirportName(self, airportName: str) -> bool:
         if airportName is None:
@@ -279,18 +312,14 @@ class Dijkstra:
 
     def __init__(self, routeIdMap, medianCost, medianTime, totalAirports):
         self.routeIdMap = routeIdMap
-        self.srcId = None
-        self.dstId = None
+        self.shortestPaths = {}
         self.medianCost = medianCost
         self.medianTime = medianTime
-        self.totalAirport = totalAirports
-        self.shortestPath = []
-        self.searchParameter = None
+        self.totalAirports = totalAirports
         self.nodes_visited = 0
 
     def _dijkstra(self, srcId: int, dstId: int, searchParameter: SearchParameter) -> list[int]:
-        self._setSearchParameters(srcId, dstId, searchParameter)
-        weights = [sys.maxsize for i in range(self.totalAirport)]
+        weights = [sys.maxsize for i in range(self.totalAirports + 2)]
         edgeTo = {}
         pq = [Vertex(srcId, -1, 0.0)]
         while pq:
@@ -310,6 +339,36 @@ class Dijkstra:
                 heapq.heappush(pq, Vertex(nextId, currId, nextWeight))
         return None
 
+    def _dijkstraWithSets(self, srcIds: frozenset[int], dstIds: frozenset[int], searchParameter: SearchParameter) -> list[int]:
+        syncSrc = self.totalAirports 
+        syncDst = self.totalAirports + 1
+        self._addSuperSync(srcIds, syncSrc, dstIds, syncDst)
+        shortestPath = self._dijkstra(syncSrc, syncDst, searchParameter)
+        if shortestPath:
+            del shortestPath[0]
+            del shortestPath[-1]
+        self._removeSuperSync(syncSrc, syncDst, dstIds)
+        return shortestPath
+    
+    def _addSuperSync(self, srcIds: frozenset[int], syncSrc: int, dstIds: frozenset[int], syncDst: int):
+        for airportId in srcIds:  
+            route = Route(syncSrc, airportId)
+            route.cost = 0
+            route.distance = 0
+            route.time = 0
+            self.routeIdMap[syncSrc][airportId] = route
+        for airportId in dstIds:  
+            route = Route(airportId, syncDst)
+            route.cost = 0
+            route.distance = 0
+            route.time = 0
+            self.routeIdMap[airportId][syncDst] = route
+
+    def _removeSuperSync(self, syncSrc: int, syncDst: int, dstIds: frozenset[int]):
+        del self.routeIdMap[syncSrc]
+        for airportIds in dstIds:
+            del self.routeIdMap[airportIds][syncDst]
+
     def _traverseToSrc(self, spTree: dict, dstId: int) -> list[int]:
         res = []
         currId = dstId
@@ -319,18 +378,23 @@ class Dijkstra:
         res.reverse()
         return res
 
-    def _setSearchParameters(self, srcId: int, dstId: int, searchParameter: SearchParameter):
-        self.srcId = srcId
-        self.dstId = dstId
-        self.searchParameter = searchParameter
-
     def getShortestPath(self, srcId: int, dstId: int, searchParameter: SearchParameter) -> list[int]:
         # get airport id
-        if srcId != self.srcId or dstId != self.dstId or searchParameter != self.searchParameter:
+        if (srcId, dstId, searchParameter) not in self.shortestPaths:
             self.shortestPath = self._dijkstra(srcId, dstId, searchParameter)
 
         # get the shortest path
+        shortestPath = self.shortestPaths.get((srcId, dstId, searchParameter))
         return self.shortestPath
+    
+    def getShortestPathWithSets(self, srcIds: frozenset[int], dstIds: frozenset[int], searchParameter: SearchParameter) -> list[str]:
+        # get airport id
+        if (srcIds, dstIds, searchParameter) not in self.shortestPaths:
+            self.shortestPaths[(srcIds, dstIds, searchParameter)] = self._dijkstraWithSets(srcIds, dstIds, searchParameter)
+
+        # get shortest path
+        shortestPath = self.shortestPaths.get((srcIds, dstIds, searchParameter))
+        return shortestPath
 
     def getWeight(self, srcId: int, dstId: int, searchParameter: SearchParameter):
         route = self.routeIdMap.get(srcId).get(dstId)
