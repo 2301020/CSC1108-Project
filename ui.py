@@ -437,7 +437,8 @@ class App(customtkinter.CTk):
                                sticky="EW", padx=5, pady=5)
 
             previous_airport = airport
-
+        self.after(100, lambda: self.toplevel_window.focus_set())
+        
     def createAirportFrame(self, airport_frame: customtkinter.CTkFrame, airport: FlightMapRouting.Airport) -> customtkinter.CTkFrame:
         """
         Creates and configures a frame to display airport information.
