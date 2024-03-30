@@ -12,10 +12,15 @@ import random
 
 customtkinter.set_default_color_theme("blue")
 
-# TODO: Add a class to find the airport class with the name via FlightPathing.airportToIdMap and use the airport name to get the airport object
+# TODO: Add Jerry's getTotalCost and getTotalTime
 
 class App(customtkinter.CTk):
+    """Docstring for App.
 
+    Args:
+        customtkinter (_type_): _description_
+
+    """
     _APP_NAME = "flight_planning_app.py"
     _WIDTH = 1200
     _HEIGHT = 800
@@ -24,6 +29,16 @@ class App(customtkinter.CTk):
     _ROUTES_FILELOCATION = r"data/routes.dat"
 
     def __init__(self, *args, **kwargs):
+        """
+        Initialize the UI class.
+
+        Args:
+            *args: Variable length argument list.
+            **kwargs: Arbitrary keyword arguments.
+
+        Returns:
+            None
+        """
         super().__init__(*args, **kwargs)
 
         self.title(self._APP_NAME)
@@ -34,7 +49,7 @@ class App(customtkinter.CTk):
         self.bind("<Command-q>", self.on_closing)
         self.bind("<Command-w>", self.on_closing)
         self.createcommand('tk::mac::Quit', self.on_closing)
-        
+
         self.flight_pathing = FlightMapRouting.FlightPathing(
             self._AIRPORT_FILELOCATION, self._ROUTES_FILELOCATION)
 
@@ -65,7 +80,7 @@ class App(customtkinter.CTk):
 
         try:
             requests.get("https://www.google.com", timeout=5)
-        
+
             self.map_widget = TkinterMapView(
                 self.frame_left, width=600, height=500, corner_radius=0)
             self.map_widget.grid(column=0, row=0, sticky="EW")
@@ -94,7 +109,8 @@ class App(customtkinter.CTk):
         self.source_name = customtkinter.StringVar()
         self.source_combobox = AutocompleteCombobox(
             self.frame_right, completevalues=self.airport_list, width=20, height=5, textvariable=self.source_name)
-        self.source_combobox.grid(column=0, row=2, sticky="EW", padx=5, pady=5, columnspan=2)
+        self.source_combobox.grid(
+            column=0, row=2, sticky="EW", padx=5, pady=5, columnspan=2)
 
         self.destination_Label = customtkinter.CTkLabel(
             self.frame_right, text="Destination Country/Airport")
@@ -118,23 +134,25 @@ class App(customtkinter.CTk):
 
         self.radio_frame = customtkinter.CTkFrame(
             self.frame_right, corner_radius=0)
-        self.radio_frame.grid(column=0, row=6, sticky="EW", padx=5, pady=5, columnspan=2)
+        self.radio_frame.grid(column=0, row=6, sticky="EW",
+                              padx=5, pady=5, columnspan=2)
         self.radio_frame.columnconfigure(0, weight=1)
         self.radio_frame.columnconfigure(1, weight=1)
 
         self.options_label = customtkinter.CTkLabel(
             self.radio_frame, text="Preference", font=("Helvetica", 15))
-        self.options_label.grid(column=0, row=0, sticky="EW", padx=5, pady=5, columnspan=2)
-        
+        self.options_label.grid(
+            column=0, row=0, sticky="EW", padx=5, pady=5, columnspan=2)
+
         self.cost_value = customtkinter.StringVar()
         self.time_value = customtkinter.StringVar()
         self.cost_value.set("Cost: 50%")
         self.time_value.set("Time: 50%")
-        
+
         self.cost_label = customtkinter.CTkLabel(
             self.radio_frame, text="Cost", font=("Helvetica", 20), textvariable=self.cost_value)
         self.cost_label.grid(column=0, row=1, sticky="E", padx=5, pady=5)
-        
+
         self.time_label = customtkinter.CTkLabel(
             self.radio_frame, text="Time", font=("Helvetica", 20), textvariable=self.time_value)
         self.time_label.grid(column=1, row=1, sticky="W", padx=5, pady=5)
@@ -144,14 +162,15 @@ class App(customtkinter.CTk):
         self.option_slider = customtkinter.CTkSlider(
             self.radio_frame, from_=0, to=100, number_of_steps=10, variable=self.selected_ratio_value, command=lambda value: self.ratio_calculator()
         )
-        self.option_slider.grid(column=0, row=2, sticky="EW", padx=5, pady=5, columnspan=2)
+        self.option_slider.grid(
+            column=0, row=2, sticky="EW", padx=5, pady=5, columnspan=2)
         self.preference_label = customtkinter.CTkLabel(
             self.radio_frame, text="Preference", font=("Helvetica", 15))
-        
+
         self.cost_label = customtkinter.CTkLabel(
             self.radio_frame, text="Cost", font=("Helvetica", 20))
         self.cost_label.grid(column=0, row=3, sticky="W", padx=5, pady=5)
-        
+
         self.time_label = customtkinter.CTkLabel(
             self.radio_frame, text="Time", font=("Helvetica", 20))
         self.time_label.grid(column=1, row=3, sticky="E", padx=5, pady=5)
@@ -168,7 +187,8 @@ class App(customtkinter.CTk):
 
         self.algor_label = customtkinter.CTkLabel(
             self.radio_frame, text="Algorithm selection", font=("Helvetica", 15))
-        self.algor_label.grid(column=0, row=4, sticky="EW", padx=5, pady=5, columnspan=2)
+        self.algor_label.grid(column=0, row=4, sticky="EW",
+                              padx=5, pady=5, columnspan=2)
 
         self.algorthim_selection = customtkinter.StringVar()
         self.algor_dropDownList = customtkinter.CTkComboBox(self.radio_frame, corner_radius=0, fg_color=None, values=[
@@ -179,18 +199,36 @@ class App(customtkinter.CTk):
 
         self.search_button = customtkinter.CTkButton(
             self.frame_right, text="Search", command=self.search)
-        self.search_button.grid(column=0, row=7, sticky="EW", padx=5, pady=5, columnspan=2)
+        self.search_button.grid(
+            column=0, row=7, sticky="EW", padx=5, pady=5, columnspan=2)
 
         self.airport_list = []
         self.airport_route = []
         self.toplevel_window = None
-    
+
     def ratio_calculator(self):
+        """
+        Calculates the cost and time values based on the selected ratio value.
+
+        Retrieves the selected ratio value from the UI and updates the cost and time values accordingly.
+
+        Parameters:
+        - self: The current instance of the UI class.
+
+        Returns:
+        - None
+        """
         value = self.selected_ratio_value.get()
         self.cost_value.set(f"Cost: {value}%")
         self.time_value.set(f"Time: {100 - value}%")
-    
+
     def getAirports(self):
+        """
+        Retrieves a sorted list of airport names.
+
+        Returns:
+            list: A sorted list of airport names.
+        """
         self.airport_list = sorted(
             [airport.name for airport in self.flight_pathing.idToAirportMap.values()])    # temp class
 
@@ -199,9 +237,19 @@ class App(customtkinter.CTk):
     #         "Round trip" if self.round_trip_switch_state.get() == "Single trip" else "Single trip")
 
     def search(self):
+        """
+        Perform a search for the shortest flight path between a source and destination airport.
+
+        This method retrieves the source and destination airport names from the UI,
+        validates them, and then calls the appropriate methods to calculate the shortest flight path.
+        If a valid path is found, it displays the flight results on the UI.
+
+        Returns:
+            None
+        """
         self.map_widget.delete_all_path()
         self.map_widget.delete_all_marker()
-        
+
         airport_route_string = None
         self.airport_route = []
         source = self.source_name.get()
@@ -212,8 +260,8 @@ class App(customtkinter.CTk):
 
         if not source or not destination:
             # CTkMessagebox(
-                #title="Error", message="Please enter a source and destination")
-            #return
+            # title="Error", message="Please enter a source and destination")
+            # return
             # for random testing purposes
             random.seed()
             source = random.choice(self.airport_list)
@@ -229,14 +277,14 @@ class App(customtkinter.CTk):
             CTkMessagebox(
                 title="Error", message="Invalid source or destination")
             return
-        
-        airport_route_string = self.flight_pathing.getShortestPathStr(
+
+        self.airport_route = self.flight_pathing.getShortestPathWithObjects(
             source, destination, self.get_slider_value(), self.algorthim_selection.get())
-        if airport_route_string is None or not airport_route_string:
+        if self.airport_route is None or not self.airport_route:
             CTkMessagebox(
                 title="Error", message="No routes found")
             return
-        self.airport_route = self.retrieve_airport(airport_route_string)
+       ## self.airport_route = self.retrieve_airport(airport_route_string)
 
         print(self.airport_route)
         self.displayFlightResults(self.airport_route)
@@ -246,18 +294,47 @@ class App(customtkinter.CTk):
         # self.map_widget.set_position(sourceLocation.position, zoom=5, deg_y=0, deg_x=0)
 
     def retrieve_airport(self, airport_name: list[str]) -> list[FlightMapRouting.Airport]:
+        """
+        Retrieves a list of Airport objects based on the given airport names.
+
+        Args:
+            airport_name (list[str]): A list of airport names.
+
+        Returns:
+            list[FlightMapRouting.Airport]: A list of Airport objects corresponding to the given airport names.
+        """
         airport_list = []
         for name in airport_name:
             airport_list.append(self.flight_pathing.airportToIdMap[name])
         return airport_list
 
     def get_slider_value(self) -> FlightMapRouting.SearchParameter:
+        """
+        Returns the search parameter based on the value of the slider.
+
+        The search parameter is calculated based on the selected ratio value of the slider.
+        The ratio value is divided by 100 to get the first parameter of the search parameter,
+        and the difference between 100 and the ratio value divided by 100 is used as the second parameter.
+
+        Returns:
+            FlightMapRouting.SearchParameter: The search parameter based on the slider value.
+        """
         value = self.selected_ratio_value.get()
         search_param = FlightMapRouting.SearchParameter(
             value / 100, (100 - value) / 100)
         return search_param
 
     def plotPath(self, airport: FlightMapRouting.Airport, previous_airport: FlightMapRouting.Airport):
+        """
+        Plot a path between two airports on the map.
+
+        Args:
+            airport (FlightMapRouting.Airport): The current airport.
+            previous_airport (FlightMapRouting.Airport): The previous airport.
+
+        Returns:
+            None
+        """
         marker_1 = self.map_widget.set_marker(
             airport.latitude, airport.longitude, text=airport.name)
         if previous_airport is not None:
@@ -267,45 +344,69 @@ class App(customtkinter.CTk):
                 [marker_1.position, marker_2.position], width=3, color="red")
 
     def displayFlightResults(self, airportList: list[FlightMapRouting.Airport]):
+        """
+        Displays the flight results on the UI.
+
+        Args:
+            airportList (list[FlightMapRouting.Airport]): A list of airports representing the flight route.
+
+        Returns:
+            None
+        """
         self.flight_info = customtkinter.CTkLabel(
             self.frame_bottom, text="Possible routes")
         self.flight_info.grid(column=0, row=0, sticky="EW", padx=5, pady=5)
-        
+
         self.route_list_frame = customtkinter.CTkScrollableFrame(
             self.frame_bottom, corner_radius=0)
-        self.route_list_frame.grid(column=0, row=1, sticky="EW", padx=5, pady=5)
+        self.route_list_frame.grid(
+            column=0, row=1, sticky="EW", padx=5, pady=5)
         self.route_list_frame.grid_columnconfigure(0, weight=1)
         self.route_list_frame.grid_columnconfigure(1, weight=4)
-        self.route_number = customtkinter.CTkLabel(self.route_list_frame, text=f"Route {0+1}")
-        self.route_number.grid(column=0, row=0,sticky="EW", padx=5, pady=5, rowspan=2)
-        
-        self.route_frame = customtkinter.CTkFrame(self.route_list_frame, corner_radius=0)
-        self.route_frame.grid(column=1, row=0, sticky="EW", padx=5, pady=5, rowspan=2)
+        self.route_number = customtkinter.CTkLabel(
+            self.route_list_frame, text=f"Route {0+1}")
+        self.route_number.grid(
+            column=0, row=0, sticky="EW", padx=5, pady=5, rowspan=2)
+
+        self.route_frame = customtkinter.CTkFrame(
+            self.route_list_frame, corner_radius=0)
+        self.route_frame.grid(column=1, row=0, sticky="EW",
+                              padx=5, pady=5, rowspan=2)
         self.route_frame.grid_columnconfigure(0, weight=6)
         self.route_frame.grid_columnconfigure(1, weight=1)
-        
+
         airport_names = ' -> '.join([airport.name for airport in airportList])
-        self.route_list = customtkinter.CTkLabel(self.route_frame, text=airport_names, )
+        self.route_list = customtkinter.CTkLabel(
+            self.route_frame, text=airport_names  )
         self.route_list.grid(column=0, row=0, sticky="EW", padx=15, pady=5)
-        self.more_details_button = customtkinter.CTkButton(self.route_frame, text="More details", command=lambda: self.displayRouteDetails(airportList), cursor="hand2")
-        self.more_details_button.grid(column=1, row=0, sticky="EW", padx=5, pady=5)
-        
+        self.more_details_button = customtkinter.CTkButton(
+            self.route_frame, text="More details", command=lambda: self.displayRouteDetails(airportList), cursor="hand2")
+        self.more_details_button.grid(
+            column=1, row=0, sticky="EW", padx=5, pady=5)
+
         # for index, airport in enumerate(airportList):
-            
-        
+
         # if self.toplevel_window is not None or not self.toplevel_window.winfo_exists():
         #     self.toplevel_window = RouteDetails(self)
         #     self.toplevel_window.displayRouteDetails(airportList)
         # else:
         #     self.toplevel_window.displayRouteDetails(airportList)
-                
-        
+
     def displayRouteDetails(self, airportList: list[FlightMapRouting.Airport]):
-        
-        if(self.toplevel_window is not None):
+        """
+        Displays the route details for a given list of airports.
+
+        Args:
+            airportList (list[FlightMapRouting.Airport]): A list of airports representing the route.
+
+        Returns:
+            None
+        """
+
+        if (self.toplevel_window is not None):
             self.toplevel_window.focus()
             return
-        
+
         self.toplevel_window = customtkinter.CTkToplevel(self, takefocus=True)
         self.toplevel_window.bind("<Destroy>", self.on_toplevel_destroy)
 
@@ -314,11 +415,13 @@ class App(customtkinter.CTk):
         self.toplevel_window.minsize(500, 300)
         self.toplevel_window.grid_columnconfigure(0, weight=1)
         self.toplevel_window.grid_rowconfigure(0, weight=1)
-        
-        self.flight_info_frame = customtkinter.CTkScrollableFrame(self.toplevel_window, corner_radius=0)
-        self.flight_info_frame.grid(column=0, row=0, sticky="EW", padx=5, pady=5)
-        self.flight_info_frame.grid_columnconfigure(0, weight=1)    
-            
+
+        self.flight_info_frame = customtkinter.CTkScrollableFrame(
+            self.toplevel_window, corner_radius=0)
+        self.flight_info_frame.grid(
+            column=0, row=0, sticky="EW", padx=5, pady=5)
+        self.flight_info_frame.grid_columnconfigure(0, weight=1)
+
         previous_airport = None
         for index, airport in enumerate(airportList):
             self.plotPath(airport, previous_airport)
@@ -328,14 +431,24 @@ class App(customtkinter.CTk):
                                   sticky="EW", padx=5, pady=5)
 
             airport_frame = customtkinter.CTkFrame(
-                self.flight_info_frame, corner_radius=0,border_color=("Black","White"))
+                self.flight_info_frame, corner_radius=0, border_color=("Black", "White"))
             self.createAirportFrame(airport_frame, airport)
             airport_frame.grid(column=1, row=index,
                                sticky="EW", padx=5, pady=5)
 
             previous_airport = airport
-            
-    def createAirportFrame(self,airport_frame: customtkinter.CTkFrame, airport: FlightMapRouting.Airport) -> customtkinter.CTkFrame:
+
+    def createAirportFrame(self, airport_frame: customtkinter.CTkFrame, airport: FlightMapRouting.Airport) -> customtkinter.CTkFrame:
+        """
+        Creates and configures a frame to display airport information.
+
+        Args:
+            airport_frame (customtkinter.CTkFrame): The frame to be configured.
+            airport (FlightMapRouting.Airport): The airport object containing the information to be displayed.
+
+        Returns:
+            customtkinter.CTkFrame: The configured airport frame.
+        """
         airport_frame.grid_columnconfigure(0, weight=1)
         airport_frame.grid_columnconfigure(1, weight=1)
         airport_frame.grid_columnconfigure(2, weight=1)
@@ -360,17 +473,18 @@ class App(customtkinter.CTk):
             airport_frame, text=f"ICAO: {airport.ICAO}")
         airport_ICAO.grid(column=0, row=4, sticky="EW", padx=5, pady=5)
 
+        return airport_frame
 
     def on_toplevel_destroy(self, event):
         self.toplevel_window = None
-    
+
     def on_closing(self):
         self.destroy()
         exit(0)
 
     def start(self):
         self.mainloop()
-        
+
 
 if __name__ == "__main__":
     app = App()
