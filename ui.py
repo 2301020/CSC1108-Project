@@ -11,10 +11,6 @@ import random
 # https://github.com/TomSchimansky/TkinterMapView?tab=readme-ov-file#create-path-from-position-list
 
 customtkinter.set_default_color_theme("blue")
-
-# TODO: Create a queue to store all previous records of whatever the user has searched for
-
-
 class App(customtkinter.CTk):
     """Docstring for App.
 
@@ -218,8 +214,8 @@ class App(customtkinter.CTk):
         - None
         """
         value = self.selected_ratio_value.get()
-        self.cost_value.set(f"Cost: {value}%")
-        self.time_value.set(f"Time: {100 - value}%")
+        self.cost_value.set(f"Cost: {100 -value}%")
+        self.time_value.set(f"Time: {value}%")
 
     def getAirports(self):
         """
@@ -569,9 +565,8 @@ class App(customtkinter.CTk):
         exit(0)
 
     def start(self):
-        self.mainloop()
-
-
+        self.mainloop()    
+    
 if __name__ == "__main__":
     app = App()
     app.start()
