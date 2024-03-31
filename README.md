@@ -36,6 +36,18 @@ Next, Run "Python ui.py" to run the actual application
 python ui.py
 ```
 
+## Testing
+
+For testing purposes, you may want to run the following route:
+
+Tobago-Crown Point Airport >>> Marau Airport
+
+Alternatively, the main function in FlightMapRouting.py also serves a test function. Uncomment line 621-622 in FlightMapRouting.py and run the following command
+
+```shell
+python FlightMapRouting.py
+```
+
 ## Authors and acknowledgment
 
 CSC1108 Grp 1 T2 AY2023/24
