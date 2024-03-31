@@ -26,7 +26,15 @@ Please refer to the dataset's documentation for more information on its structur
 
 Run the requirements.txt file to install required dependencies
 
+```shell
+pip install -r requirements.txt
+```
+
 Next, Run "Python ui.py" to run the actual application
+
+```shell
+python ui.py
+```
 
 ## Authors and acknowledgment
 
