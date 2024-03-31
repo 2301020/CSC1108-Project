@@ -301,7 +301,7 @@ class App(customtkinter.CTk):
                     self.flight_pathing.bellmanford.shortestPath))
             case "Dijkstra":
                 self.total_cost_deque.append(self.total_cost(
-                    self.flight_pathing.dijkstra.shortestPath))
+                    self.flight_pathing.dijkstra.getShortestPath(self.flight_pathing.airportToIdMap.get(source).airportId, self.flight_pathing.airportToIdMap.get(destination).airportId, self.get_slider_value())))
                 self.total_time_deque.append(self.total_time(
                     self.flight_pathing.dijkstra.shortestPath))
 
