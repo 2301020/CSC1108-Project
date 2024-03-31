@@ -24,7 +24,9 @@ Please refer to the dataset's documentation for more information on its structur
 
 ## Installation
 
--- To be Written --
+Run the requirements.txt file to install required dependencies
+
+Next, Run "Python ui.py" to run the actual application
 
 ## Authors and acknowledgment
 
@@ -36,6 +38,4 @@ MIT License
 
 ## Project status
 
-Currently under development
-
-Thank you for your interest in the Flight Map Routing Project!
+Completed 
